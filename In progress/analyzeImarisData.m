@@ -83,21 +83,6 @@ for iDir = 1:length(dirs) % For each directory (movie)
         tiledlayout('flow')
         %set(fh,'Units','inches','Position',[0 0 8 11]); % paper size            
          
-        %p1 = [1 1 3 3];
-        %p2 = [4.25 1 3 3];
-        %p3 = [1 4.25 3 3];
-        %p4 = [4.25 4.25 3 3];
-        %p5 = [1 7.5 3 3];
-        %p6 = [4.25 7.5 3 3];
-        
-        
-        %ah{1} = axes('Parent',fh,'Units','inches','Position',p1,'YTickLabel',[],'XTickLabel',[]);
-        %ah{2} = axes('Parent',fh,'Units','inches','Position',p2,'YTickLabel',[],'XTickLabel',[]);
-        %ah{3} = axes('Parent',fh,'Units','inches','Position',p3,'YTickLabel',[],'XTickLabel',[]);
-        %ah{4} = axes('Parent',fh,'Units','inches','Position',p4,'YTickLabel',[],'XTickLabel',[]);
-        %ah{5} = axes('Parent',fh,'Units','inches','Position',p5,'YTickLabel',[],'XTickLabel',[]);
-        %ah{6} = axes('Parent',fh,'Units','inches','Position',p6,'YTickLabel',[],'XTickLabel',[]);
-        
         num = 0;
         
         % ------------------- END FIGURE SETUP ------------------------
@@ -224,7 +209,6 @@ for iDir = 1:length(dirs) % For each directory (movie)
                                 class_out(startFrame:endFrame,3) = cellClass(iClass,20);
                                 if cellClass(iClass,3)>0
                                     try
-                                    %set(ah{num},'NextPlot','add')
                                     
                                     plot(track_i(startFrame:endFrame,3),track_i(startFrame:endFrame,4),...
                                         'Color',cCode(cellClass(iClass,3),:));

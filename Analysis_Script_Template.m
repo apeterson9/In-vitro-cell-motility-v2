@@ -14,7 +14,7 @@
 %  ------------User Inputs----------------
 
 %masterPath = 'E:\Downloads\movies\movies\C5a movies\Arpc1b lines\2D'; % home
-masterPath = 'C:\Users\anpet\Desktop\2D_exp_full_data\movies\C5a movies\Arpc1b lines\2D\';
+masterPath = 'C:\Users\anpet\Desktop\2D_exp_full_data\movies\C5a movies\Arpc1b lines\2D_test\';
 %masterPath = 'C:\Users\anpet\Desktop\2D_exp'; % home
 
 %masterPath = 'D:\Huttenlocher Lab\Ashley\C5a movies\Arpc1b lines\2D\';
