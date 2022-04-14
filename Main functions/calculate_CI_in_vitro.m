@@ -36,10 +36,10 @@ counter = 0;
 
 % Initialize variables
 tracks = allData{:,:};
-%track_heads = ["cell_ID","CI_Jon","theta","velocity","ed_src"];
+track_heads = ["cell_ID","t_sec", "x_pos", "y_pos", "velocity", "CI", "theta", "dist_src"];
 allTracks_temp = [];
 cellIDs = nonzeros(unique(tracks(:,iCol))); % list of particle ID's
-heads = ["cell ID", "track_length", "cumul distance", "net displacement", "tortuosity", "mean velocity", "mean theta", "mean CI", "num pauses", "duration"];
+heads = ["cell_ID", "track_length", "cumul_distance", "net_displacement", "tortuosity", "mean_velocity", "mean_theta", "mean_CI", "num_pauses", "duration"];
 cellMeans = table(nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,'VariableNames',heads); % Initialize output variables
 
 x = source(:,1); % x coord of source line
@@ -160,6 +160,7 @@ for track_idx = 1:length(cellIDs) % for each cell
     end % if numSteps > track_length
 end % for track_Idx
 
-allTracks = allTracks_temp(all(~isnan(allTracks_temp),2),:); % remove rows that are all nan
+%allTracks = allTracks_temp(all(~isnan(allTracks_temp),2),:); % remove rows that are all nan
+allTracks = array2table(allTracks_temp,'VariableNames',track_heads); % convert to table
 
 end % end function

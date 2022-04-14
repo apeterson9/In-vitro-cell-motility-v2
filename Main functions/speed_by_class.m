@@ -7,24 +7,24 @@ cellIDs = unique(cellMeans.cell_ID,'stable');
 vbc = [];
 for iCell = 1:length(cellIDs) % for every Cell
     trackID = cellIDs(iCell); % Track ID
-    cellIdx = find(scOut.TrackID == trackID); % find rows corresponding to trackID
+    cellIdx = find(scOut.cell_ID == trackID); % find rows corresponding to trackID
 
-        
         % row 11, 12
-        iClass = scOut.velocity(cellIdx); % track classifications
-        iVel = scOut.Class(cellIdx); % instantaneous velocity
-        classes = 0:3; % all possible classes
-        vClass = [nan,nan,nan,nan];
+        iClass = scOut.Class(cellIdx); % track classifications
+        iVel = scOut.velocity(cellIdx); % instantaneous velocity
+        classes = 1:3; % all possible classes
+        vClass = [nan,nan,nan];
         for iC = 1:length(classes)
             classIdx = find(iClass == classes(iC));
             if ~isempty(classIdx)
-                vClass(iC) = nanmean(iVel(classIdx));
+                vClass(iC) = mean(iVel(classIdx),'omitnan');
             end
         end % for length(classes)
-        vbc = [vbc; vClass];
+        vbc = [vbc; vClass]; % velocity by class
 
 end
-vel_by_class = table(nan,nan,nan,nan,'VariableNames',["mean_vel_UC","mean_vel_confined","mean_vel_free","mean_vel_super"]);
+
+vel_by_class = table(nan,nan,nan,'VariableNames',["mean_vel_confined","mean_vel_free","mean_vel_super"]);
 vel_by_class{1:length(cellIDs),:} = vbc;
     
 end % function

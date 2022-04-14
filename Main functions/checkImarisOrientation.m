@@ -4,7 +4,6 @@ reps = fieldnames(rawData(:));
 plotRows = 2;
 plotCols = ceil(length(reps)/plotRows);
 
-
 uis = expData.ui{:,1};
 pixRow = find(strcmp(uis(:),'Pixel Size') == 1);
 pixUnit = expData.ui{pixRow,2}{1};
@@ -27,12 +26,14 @@ for iRep = 1:length(reps)
     x = rawData.(rep).ImarisData{:,3};
     y = rawData.(rep).ImarisData{:,4};
     subplot(plotRows,plotCols,subNum)
-    scatter(x,y);
+    scatter(x,y,.5,'.','k');
+    xlabel('x')
+    ylabel('y')
     title(num2str(subNum))
     hold on
     %source = [520 200; 520 500]*pixUnit; % right side (for fish)
     source = [200 1; 500 1]*pixUnit; % bottom (in vitro)
-    line([source(1,1) source(2,1)],[source(1,2), source(2,2)],'Color','g','LineWidth',3);
+    line([source(1,1) source(2,1)],[source(1,2), source(2,2)],'Color','r','LineWidth',3);
     rawData.(rep).source = source;
     clear x
     clear y

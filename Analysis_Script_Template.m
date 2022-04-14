@@ -11,8 +11,8 @@
 % Step 8: Export processed data for statistics and visualization in R
 % Step 9: Create plots and data summary in R Studio
 
-% ------------ STEP 1 -----------------
-%  ------------User Inputs----------------
+% ------------ STEP 1 -------------------
+% ------------User Inputs----------------
 
 %masterPath = 'E:\Downloads\movies\movies\C5a movies\Arpc1b lines\2D'; % home
 %masterPath = 'C:\Users\anpet\Desktop\2D_exp'; % home
