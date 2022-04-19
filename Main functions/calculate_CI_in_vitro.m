@@ -1,4 +1,4 @@
-function [cellMeans, scData] = calculate_CI_in_vitro(allData, source, min_track_length)
+function [cellMeans, allTracks] = calculate_CI_in_vitro(allData, source, min_track_length)
 % NOTE: Z-dimension/3D functionality not completed - this code assumes
 % there is no positional change in the Z-direction!
 %
@@ -6,7 +6,7 @@ function [cellMeans, scData] = calculate_CI_in_vitro(allData, source, min_track_
 %          as cell average statistics including overall directionality 
 %
 % INPUTS: 
-% tracks:       mxn matrix where m = individual measurements (1 per step, per cell) and n = number of measurements
+% allData (tracks):       mxn matrix where m = individual measurements (1 per step, per cell) and n = number of measurements
 %               expects columns 1:2 to be position coordinates, column 3 to be frames and column 4 to be
 %               cell ID
 % source:       Either coordinates of a point or line that represents gradient
@@ -30,156 +30,137 @@ headers = allData.Properties.VariableNames;
 
 xCol = find(strcmp(headers,'PosX'));
 yCol = find(strcmp(headers,'PosY'));
-zCol = find(strcmp(headers,'PosZ'));
 tCol = find(strcmp(headers,'Time_in_Sec')); 
 iCol = find(strcmp(headers,'TrackID'));
 counter = 0;
 
 % Initialize variables
 tracks = allData{:,:};
-tracks_out = nan(size(tracks,1),4);
-track_heads = ["cell_ID","cosin","theta","velocity","ed_src"];
-scData = table(nan,nan,nan,nan,nan,'VariableNames',track_heads);
+track_heads = ["cell_ID","t_sec", "x_pos", "y_pos", "velocity", "CI", "theta", "dist_src"];
+allTracks_temp = [];
 cellIDs = nonzeros(unique(tracks(:,iCol))); % list of particle ID's
-heads = ["cell_ID","numSteps","cumulative_distance","net_displacement","DI","mean_velocity","cos_theta","CI_Haynes","MI","ECI","numPauses","duration"];
-cellMeans = table(nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,'VariableNames',heads); % Initialize output variables
+heads = ["cell_ID", "track_length", "cumul_distance", "net_displacement", "tortuosity", "mean_velocity", "mean_theta", "mean_CI", "num_pauses", "duration"];
+cellMeans = table(nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,'VariableNames',heads); % Initialize output variables
 
-x = source(1,:);
-y = source(2,:);
+x = source(:,1); % x coord of source line
+y = source(:,2); % y coord of source line
 src_line = [x(1) y(1); x(2) y(2)]; % re-construct source-line
 
-
 for track_idx = 1:length(cellIDs) % for each cell
-    
-    % Obtain relevant data
+
     cellIdx = find(tracks(:,iCol)==cellIDs(track_idx)); % rows corresponding to current cell ID
     
-    track_i = tracks(cellIdx,[xCol:yCol tCol]); %  Tracks for current cell ID
+    track_i = tracks(cellIdx,[tCol xCol yCol]); %  Tracks for current cell ID
 
-    % Initialize cell-specific variables
-    CI = zeros(length(cellIdx)-1,1); % chemotactic index vector
-    theta = zeros(length(cellIdx)-1,1); % angle with respect to source
-    cellID = zeros(length(cellIdx)-1,1); % For matching   
-    dist_src = zeros(length(cellIdx)-1,1);
+    tracks_out_i = nan(size(track_i,1),8); % initiate storage output tracks for cell i
+
+    % Initialize cell-specific variables, vectors of length t corresponding
+    % to each cell. Will re-generate new vector as loop through each cell
+    % and store this cell-specific data in matrix "tracks_out"
+
     ID = cellIDs(track_idx);
     
     numSteps = size(track_i,1);
-    cumDist = nan;
-    net_displacement = nan;
-    DI = nan;
-    meanV = nan;
-    cos_theta = nan;
-    CIH = nan;
-    MI = nan;
-    ECI = nan;
-    numPauses = nan;
-    duration = nan;
+%     normDist = nan;
+%     net_displacement = nan;
+%     tort = nan;
+%     meanVel = nan;
+%     meanTheta = nan;
+%     CIH = nan;
+%     MI = nan;
+%     ECI = nan;
+%     numPauses = nan;
+%     duration = nan;
     
     % -------------------- Step-level calculations ------------------------
-    if numSteps > min_track_length
+ if numSteps > min_track_length
         counter = counter+1;
         cellMeans{counter,:} = nan;
-        velocity = [];
-        displacement = zeros(length(cellIdx)-1,1); %  Initialize displacement storage vector
-        
+        disp_list = zeros(length(cellIdx)-1,1); %  Initialize displacement storage vector
+        vel_list = zeros(length(cellIdx)-1,1);
+        theta_list = zeros(length(cellIdx)-1,1);
+        CI_list = zeros(length(cellIdx)-1,1);
+
         for t = 2:numSteps % Within track_i, loop through time length of track
             
-            idx = cellIdx(t); % index within tracks corresponding to current step
-            posI = [track_i(t-1,1) track_i(t-1,2)]; % position of particle at time t-1
-            posF = [track_i(t,1) track_i(t,2)]; % position of particle at time t
+            % idx = cellIdx(t); % index within tracks corresponding to current step
+            posI = [track_i(t-1,2) track_i(t-1,3)]; % position of particle at time t-1
+            posF = [track_i(t,2) track_i(t,3)]; % position of particle at time t
             
             intersect = proj_point_BG(src_line, posI); % project initial point 
-            dist_src(t) = pdist([posI; intersect]);
+            dist_src = pdist([posI; intersect]);
             ct_axis = intersect - posI; % migration axis vector (perpendicular to source LINE)
             rdx = posF(1)-posI(1); % x displacement
             rdy = posF(2)-posI(2); % y displacement
-            rdt = sqrt(rdx^2 + rdy^2); % total displacement
-            displacement(t) = rdt;
+            rdtot = sqrt(rdx^2 + rdy^2); % total displacement
+            disp_list(t) = rdtot; % for single track
+
             % calculate velocity and remove potential infs
-            velocity(t) = rdt/(track_i(t,3)-track_i(t-1,3));
-            if velocity(t) == Inf
-                velocity(t) = nan;
-            end 
-            dr = [rdx rdy]; % displacement vector - change in x, change in y
-            cos_theta = dot(dr/norm(dr), ct_axis/norm(ct_axis)); % dot displacement with unit vector representing axis of chemotaxis
-            % Divide by total displacement at that step: What PERCENT of motion at that step is towards gradient source?
-            % Length of the projection of dr onto ct_axis: What AMOUNT of motion is towards source??
-            CI(t) = cos_theta; % percent of motion
+            vel_list(t) = rdtot/(track_i(t,1)-track_i(t-1,1));
+            if vel_list(t) == Inf
+                vel_list(t) = nan;
+            end
             
-            
+            % calculate theta, angle between true migration and "correct" migration along ct_axis
+            dr = [rdx rdy]; % displacement vector = change in x, change in y
             U = [dr 0]; % displacement vector (need 3 dimensions)
             V = [ct_axis 0]; % position vector relative to source
             N = [0 0 1]; % The v1 & v2 plane normal vector
-            theta(t) = vecangle180(U,V,N); % gives angle from -180 to 180 degrees
-            clear u; clear v; clear n; clear dr;
-            tracks_out(idx,1:5) = [ID cos_theta theta(t) velocity(t) dist_src(t)]; 
+            theta_list(t) = vecangle180(U,V,N); % gives angle from -180 to 180 degrees
 
-            % tracks_out(idx,5) = norm(ct_axis);
-            % *Note if a particle doesnt move in the alloted dt, the output
-            % of cos_theta (thus theta) is NaN becuase norm(dr) = 0 (magnitde of dr).
-            % Thus dividing by zero. Thus I simply omit NaN values from mean_theta below.
-        end % for t
+            % cosTheta = cosd(theta_list(t)); % equivalent to CI
+
+            CI_list(t) = dot(dr/norm(dr), ct_axis/norm(ct_axis)); % dot normalized displacement with unit vector representing axis of chemotaxis
+            % Length of the projection of dr onto ct_axis: What AMOUNT of motion is towards source??
+            % Length of normalized displacement at that step (done here): What PERCENT of motion at that step is towards gradient source?
+            % This is essentially just cos(theta)
+            
+            input_pos_vec = [track_i(t,:)]; % vector of [t x y]
+            tracks_out_i(t,1:8) = [ID input_pos_vec vel_list(t) theta_list(t) CI_list(t) dist_src]; 
+            clear u; clear v; clear n; clear dr; clear dist_src; 
+
+        % *Note if a particle doesnt move in the alloted dt, the output
+        % of cos_theta (thus theta) is NaN becuase norm(dr) = 0 (magnitde of dr).
+        % Thus dividing by zero. I simply omit NaN values from mean_theta calculation below.
+
+        end % for all t for given track i
+
+        allTracks_temp = [allTracks_temp; tracks_out_i];
+
+        %allTracks{1:size(tracks_out_i,1),:} = tracks_out_i; % store all single cell data
+        % tracks_out_i(2:end,:)
     % ---------------------- END STEP-LEVEL CALCULATIONS ------------------
+
     % ---------------------- BEGIN TRACK-LEVEL CALCULATIONS ---------------
-        
-    posI = track_i(1,1:2); % initial position
-    posF = track_i(end,1:2); % final position
+    
+    % this section calculates means for each track over all time that the track exists
+
+    % first get number of pauses using displacment vector from above
+    [numPauses, duration] = find_pauses(disp_list,1,2);
     
     % Determine relative displacement and track duration
-    rdX = track_i(end,1)-track_i(1,1); % relative displacement in the X direction
-    rdY = track_i(end,2)-track_i(1,2); % relative displacement in the Y direction
-    %rdZ = track_i(end,3)-track_i(1,3); % relative displacement in the Z direction
+    rdX = track_i(end,2)-track_i(1,2); % relative displacement in the X direction
+    rdY = track_i(end,3)-track_i(1,3); % relative displacement in the Y direction
     
-    % relative displacement total normalized by track-length
-    rdT = sqrt(rdX^2 + rdY^2)/t;
-    [numPauses duration] = find_pauses(displacement,1,2);
-    
-    
-    numSteps = t;
-    cumDist = sum(displacement)/t; % Cumulative distance traveled normalized by track length
-    net_displacement = rdT;
-    DI = rdT/sum(displacement); clear displacement, clear rdT
-    meanV = nanmean(velocity); clear velocity % mean cell velocity over entire track
-    cos_theta = nanmean(theta); clear theta
-    
-        % -------------------------- BEGIN CI CALC HAYNES METHOD ----------
-        
-        intersect = proj_point_BG(src_line, posI); % project starting point onto source
-        ct_axis = intersect - posI; % migration axis vector (perpendicular to source LINE)
-        newLine = [intersect(1) intersect(2); posI(1) posI(2)];
-        iS = proj_point_BG(newLine, posF);
-        newAxis = iS-posF;
-        dr = [posF(1)-posI(1) posF(2)-posI(2)]; % displacement
-        cosTheta = dot(dr/norm(dr),ct_axis/norm(ct_axis));
-        theta = acosd(cosTheta); % approach angle
-        MI =  norm(dr)/(meanV*(track_i(end,2)-track_i(1,2))); % motility index
-        if MI ~= inf
-            % determine x component
-            if theta>90
-                %     R = [cosd(180) -sind(180); sind(180) cosd(180)];
-                %     flip = dr;
-                %     flip = flip*R;
-                %     cosTheta = dot(flip/norm(flip),ct_axis/norm(ct_axis));
-                %     iF = proj_point_BG(newLine,flip)
-                theta = 180-theta;
-                sense = -1;
-            else
-                sense = 1;
-            end
-            theta3 = 180-90-theta;
-            xD = sind(theta3)*norm(dr)*sense;
-            CIH = xD/(sum(cumDist));
-            ECI = CIH*MI;
-        else
-            CIH = nan;
-            ECI = nan;
-        end % if MI(iCell)
-    end % if % size of track
-    
-    cellMeans{counter,:} = [ID,numSteps,cumDist,net_displacement,DI,meanV,cos_theta,CIH,MI,ECI,numPauses,duration];
-    clear ID, clear numSteps, clear cumDist, clear net_displacement, clear DI, clear meanV, clear cos_theta, clear CIH, clear MI, clear ECI, clear numPauses, clear duration
-end % for trackIdx
+    netDisp = sqrt(rdX^2 + rdY^2); % displacement
+    cumDist = sum(disp_list); % distance traveled
+    %normDisp = sqrt(rdX^2 + rdY^2)/numSteps; % total distplacement normalized by track-length
+    %normDist = sum(disp_list)/numSteps; % cumulative distance traveled normalized by track length
 
-scData{1:size(tracks_out,1),:} = tracks_out;
+    % calculate means for each track
+    tort = netDisp/cumDist; % thus 0 < tort < 1
+    meanVel = mean(vel_list,'omitnan');
+    meanTheta = mean(theta_list,'omitnan');
+    meanCI = mean(CI_list,'omitnan');
+    
+    cellMeans{counter,:} = [ID, numSteps, cumDist, netDisp, tort, meanVel, meanTheta, meanCI, numPauses, duration];
+    clear ID, clear numSteps, clear cumDist, clear netDisp, clear tort, ...
+        clear meanVel, clear meanTheta, clear numPauses, clear duration
+
+    end % if numSteps > track_length
+end % for track_Idx
+
+%allTracks = allTracks_temp(all(~isnan(allTracks_temp),2),:); % remove rows that are all nan
+allTracks = array2table(allTracks_temp,'VariableNames',track_heads); % convert to table
 
 end % end function

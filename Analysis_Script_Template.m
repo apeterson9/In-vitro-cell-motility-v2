@@ -10,16 +10,20 @@
 % Step 7: Quantify velocity by motility state
 % Step 8: Export processed data for statistics and visualization in R
 % Step 9: Create plots and data summary in R Studio
-%% ------------ STEP 1 -----------------
-%  ------------User Inputs----------------
+
+% ------------ STEP 1 -------------------
+% ------------User Inputs----------------
 
 %masterPath = 'E:\Downloads\movies\movies\C5a movies\Arpc1b lines\2D'; % home
-masterPath = 'C:\Users\anpet\Desktop\2D_exp_full_data\movies\C5a movies\Arpc1b lines\2D_test\';
 %masterPath = 'C:\Users\anpet\Desktop\2D_exp'; % home
-
 %masterPath = 'D:\Huttenlocher Lab\Ashley\C5a movies\Arpc1b lines\2D\';
 %masterPath = 'C:\Users\bxr007\OneDrive - UW-Madison\Data In Progress\Rescue lines'; % work
-src_type = 'line'; 
+
+masterPath = '/Users/jonschrope/Desktop/Huttlab/cell_tracking'; % Jon Desktop
+addpath(genpath(masterPath)); % Add all subfolders to the path
+masterPath = formatPath(masterPath); % add filesep to end of path
+
+src_type = 'line';
 process_all = 1;
 timeInSec = 30; % frequency in seconds of images
 pixUnit = 1.27; % size of 1 pixel in uM NOTE: Nikon 10X = 0.788 %1.27
@@ -30,22 +34,23 @@ dataOrganization = 'individual'; %Enter 'compound' if you have one excel file wi
 min_track_length = 10;
 masterPath = formatPath(masterPath);
 
-%% Read-in, organize Imaris Data, store user-inputs, create directories for variables, error logs and graphs
+% Read-in, organize Imaris Data, store user-inputs, create directories for variables, error logs and graphs
 
 expData = createUserInputs(masterPath,timeInSec,numFrames,pixUnit,src_type,process_all,dataOrganization,min_track_length);
 
-%% Load experiment data inputs
-varPath = formatPath([masterPath 'Variables']);
-expFile = getFilenames(varPath, 'expData');
+% Load experiment data inputs
+varPath = formatPath([masterPath 'Variables']); % Variables subfolder path
+expFile = getFilenames(varPath, 'expData'); % get files that contain 'expData' text
 
 if ~isempty(expFile)
-    load([varPath expFile{end}]);
+    load([varPath expFile{end}]); % create processeddedData and R fields
+    % (if aready there... otherwise dont udnerstand this part)
 else
     error('No data file found. Please check the path');
-end 
+end
 
 expData.masterPath = masterPath;
-expData.statusTracker
+expData.statusTracker % print status
 
 %% Analyze Imaris-generated tracks
 

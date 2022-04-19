@@ -170,7 +170,7 @@ c = clock;
 timeStamp = strcat(num2str(c(4)),"_",num2str(c(5)),"_",(num2str(floor(c(6)))));
 clear c
 
-if strcmp(class(lut),'cell') == 0
+if iscell(lut) == 0
     lut = table2cell(lut);
 end
 
@@ -212,7 +212,7 @@ for iDir = 1:length(dirs) % for every directory
             N = 1:length(reps);
         end
         
-        for i = [N]
+        for i = N
             try
                 iN = N(i); % in case files to be processed are not consecutive
                 %fprintf('Reading Imaris Files...\n');
@@ -235,9 +235,9 @@ for iDir = 1:length(dirs) % for every directory
                     fileFormat = 'xls';
                 end % if isempty
                 
-                if isempty(iFilenames) % Hail Mary, full of grace the lord is with thee!
+                if isempty(iFilenames)
                     warning('Unable to detect Imaris files... attempting to solve...')
-                    %fprintf('\nHail, Mary! Full of grace, the lord is with thee!');
+
                     if iDir > 1
                         worth_a_try = dirs{iDir - 1};
                     else
@@ -266,13 +266,11 @@ for iDir = 1:length(dirs) % for every directory
                     end % if isempty
                     
                     if ~isempty(iFilenames)
-                        %fprintf('\nGo in peace! Your faith has healed you!\n')
                         dirs{iDir} = newDir;
                         for iL = 1:length(dirIdx)
                             lut{dirIdx(iL),2} = newDir;
                         end
                     else
-                        %fprintf('\nRepent! Ye of little faith...\n')
                     end
                 end % if isempty
                 
@@ -310,9 +308,7 @@ for iDir = 1:length(dirs) % for every directory
                 % If using interactive source selector, comment out
                 % this block.
                 
-                
                 rawData = checkImarisOrientation(rawData,expData,movie_path);
-                %fprintf('Gradient source %d stored...\n',i);
                 
                 % -------- END SOURCE CONFIRMATION --------------------
                 
