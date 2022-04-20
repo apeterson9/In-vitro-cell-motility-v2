@@ -1,0 +1,511 @@
+---
+title: "Quantifying cell motility *in vitro*"
+authors: "Briana Rocha-Gregg, Michael Lasarev, Ashley Peterson"
+date: "04/06/2022"
+fontsize: 9pt
+theme: "readable"
+---
+## Summary
+The purpose of this document is to summarize the statistical analysis used to properly analyze effects of a treatment on cell motility patterns. Prior to using this markdown, the corresponding MATLAB library should be used to analyze output files from Imaris to obtain the following metrics of motility:
+
+* __Chemotactic Index__: Calculated using methods described by Kim and Hayne (2013). $CI = \frac{x}{d_{TOT}}$; where $x$ is the final displacedment along the direction of the gradient, and $d_{TOT}$ is the total migration distance. 
+
+* __Total Migration Distance__: Calculated for each track; $d_{TOT} = \sum_{1}^{n}P_{f}-P_{i}$; where $n$ = number of frames, $P_f$ = final position, and $P_i$ = starting position.
+
+* __Directional Accuracy__: For each cell, the cosine of the angle between the motility axis (a line drawn between that cell's starting and ending positions) and the optimal motility axis (a line drawn between the cell's starting position and the chemoattractant source). Relative to the optimal motiliy axis, a value of -1 indicates movement in the opposite direction, a value of 0 indicates perpendicular movement, and 1 represnts perfect movement along the motility axis.
+
+* __Directionality Index__: A measure of track "straightness"; $DI = \frac{d_{OPT}}{d_{TOT}}$; where $d_{OPT}$ is the length of the optimal motility axis, and $d_{TOT}$ is the total migration distance.
+
+* __Net gain__: A measurement in $\mu$$M$ indicative of the distance gained toward the source. A negative number indicates that overall, the final position of a given cell is farther away from the source than the starting position. 
+
+*__Number of pauses__: A pause in motility is registered when a cell does not change position to the nearest micron for 2 or more frames.
+
+*__Pause duration__: Using the pause definition above, a measurement of how long a cell spends in a paused state. 
+
+*__Velocity free__: Calculated using methods described by Jaqaman. Cell speed is classified into one of three motility states based on the diffusion coefficient. See Vega et al., Biophys. J. (2018) for more information. 
+
+# Statistical Methods
+
+Individual, single-cell measurements for each response (mean speed, CI etc.) are aggregated according to day of experiment (identical to biological source material, slide within day, cell line or treatment, and chemoattractant stimulation. The summary measure used for aggregation is the sample mean of cell-level responses for all possible combinations of experimental conditions (# days, cell lines, slides, chemoattractants, respectively). A linear mixed effect model was then fit to each aggregated mean response treating cell line, chemoattractant stimulation, and the interaction between these two factors as fixed effects; random effects included day, slide within day, and an additional term that allowed fixed
+effects of cell line / stimulation to vary by day (i.e., perturbations in these fixed effects due to biological source
+material). Estimated marginal means were computed for the mixed effects related to cell line and to stimulation.
+Subsequent comparisons between cell lines, and pairwise comparisons among three levels of stimuli, were made
+using these marginal means with p-values for three pairwise comparisons involving stimuli adjusted using Tukey’s
+method. Models were fit using R (ver. 4.0.3)1 and the associated lme42, lmerTest3, and emmeans4 packages.
+
+
+## Prerequisites
+### Load required packages
+```{r setup, warning = FALSE, message = FALSE, results = FALSE}
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(jtools)
+library(dplyr)
+library(sjstats)
+library(sjPlot)
+library(tidyverse)
+library(knitr)
+library(RColorBrewer)
+library(purrr)
+library(tufte)
+library(ggpubr)
+library(ggbeeswarm)
+
+knitr::opts_knit$set(root.dir = 'C:/Users/anpet/Desktop/2D_exp_full_data/movies/C5a movies/Arpc1b lines/2D/R code/2022-04-05/')
+#knitr::opts_knit$set(root.dir = 'D:/Huttenlocher Lab/Ashley/C5a movies/Arpc1b lines/R code/2D/2021-06-30/')
+```
+
+### Load Data
+Raw data files are loaded and organized in another script. Briefly, data headers were edited for clarity, experimental day was converted to a factor, and speeds in excess of 2*SD were removed as they are not physiologically relevant and likely caused by drift.
+
+```{r load data, warning = FALSE, message = FALSE, results = FALSE}
+# Set working directory containing pre-requisite scripts
+
+#source("Scripts/2D_data_clean-up.R")
+
+# We're not analyzing the PBS conditions due to poor adhesion and excess drift. All experiments performed on day 7 are removed due to poor cell health. 
+data_clean = subset(data_clean, data_clean$stimulus != "PBS")
+data_clean = subset(data_clean, data_clean$day != 7)
+data_clean$f.day <- as.factor(data_clean$day)
+
+# re-aggregate the data without PBS and day 7
+agg <- data_clean
+agg <- aggregate( cbind(cell_speed, directionality_index, distance, accuracy, confinement_radius, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
+agg <- cbind(agg[,1:4],agg[,5:9]/agg[,10])
+
+agg$trt <- apply(agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
+agg$trt <- as.factor(agg$trt)
+#agg = subset(agg, agg$stimulus != "PBS")
+#agg = subset(agg, agg$day != 7)
+```
+
+### Define color palette and custom figure theme.
+*Color palette via [COLORBREWER 2.0](https://colorbrewer2.org/#type=sequential&scheme=BuGn&n=3)*
+```{r color palette, echo = FALSE}
+Day_colors = brewer.pal(length(levels(data_clean$f.day)), "Dark2")
+names(Day_colors) <- levels(data_clean$f.day)
+colScale <- scale_colour_manual(name = "f.day", values = Day_colors)
+
+# Generate theme
+# Define your own theme function below
+theme_Briana <- function() {
+  theme_minimal() +
+    theme(
+      text = element_text(size = 14, family = "serif"),
+      plot.subtitle = element_text(size = 14),
+      plot.caption = element_text(color = "gray30"),
+      plot.margin = unit(c(5, 10, 5, 10), units = "mm")
+    )
+}
+```
+## Superplot of cell speed by cell-line
+Numerous groups have reported motiity defects in neutrophils isolated from patients with Arpc1b mutations. These defects include decreased cell-speed and increased production of filipodia (due to inability to form branched actin filaments). PLB985 cells with an Arpc1b KO recapitulate these observations. Below, a superplot of cell speed where measurements are color-coded by experimental day.
+
+```{r super_speed, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
+
+# Generate figure
+bee.plot <- ggplot(agg, aes(x = cell_line, y = cell_speed)) + 
+  #scale_colour_brewer(palette = "PuOr") +
+  facet_wrap(~stimulus) +
+  geom_boxplot(outlier.shape=NA, fill="#B3B3B3") +   
+  geom_beeswarm(cex=3,aes(colour=f.day)) + 
+  #scale_fill_brewer(direction = -1, palette = "PuOr") +
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
+               geom="errorbar", color="black", width=0.5) + 
+  stat_compare_means(data=agg, comparisons = list(c("Control","Arpc1b")), method="t.test", paired=TRUE) +
+  theme(legend.position="none")+
+  # Add labels
+  labs(
+    x = "",
+    y = "Mean cell speed in uM/second",
+    title = "Figure 1",
+    subtitle = "Arpc1b KO cells are consistently slower than Control cells"
+  ) 
+bee.plot
+
+```
+## Other motility defects
+Similarly, we find that PLB985-Arpc1bKO cells are less directional than their control-cell counterparts. They also have a smaller confinement radius and a shorter cumulative distance. However, our data show that their ability to make gains toward the chemoattractant source does not reach the level of significance. 
+
+```{r super_di, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
+# Generate figure
+bee.plot <- ggplot(agg, aes(x = cell_line, y = directionality_index)) + 
+  facet_wrap(~stimulus) +
+  geom_boxplot(outlier.shape=NA,fill="#B3B3B3") +   
+  geom_beeswarm(cex=3,aes(colour = f.day)) + 
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
+               geom="errorbar", color="black", width=0.5) + 
+  stat_compare_means(data=agg, comparisons = list(c("Control","Arpc1b")), method="t.test", paired=TRUE) +
+  theme(legend.position="none")+
+  # Add labels
+  labs(
+    x = "",
+    y = "Mean Directionality Index",
+    title = "Figure 2",
+    subtitle = "Arpc1b KO cells are less directional"
+  ) 
+bee.plot
+```
+```{r super_cr, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
+# Generate figure
+bee.plot <- ggplot(agg, aes(x = cell_line, y = directionality_index)) + 
+  facet_wrap(~stimulus) +
+  geom_boxplot(outlier.shape=NA,fill="#B3B3B3") +   
+  geom_beeswarm(cex=3,aes(colour = f.day)) + 
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
+               geom="errorbar", color="black", width=0.5) + 
+  stat_compare_means(data=agg, comparisons = list(c("Control","Arpc1b")), method="t.test", paired=TRUE) +
+  theme(legend.position="none")+
+  # Add labels
+  labs(
+    x = "",
+    y = "mean confinement radius",
+    title = "Figure 3",
+    subtitle = "Arpc1b KO cells are more confined"
+  ) 
+bee.plot
+```
+```{r super_dist, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
+
+bee.plot <- ggplot(agg, aes(x = cell_line, y = distance)) + 
+  facet_wrap(~stimulus) +
+  geom_boxplot(outlier.shape=NA,fill="#B3B3B3") +   
+  geom_beeswarm(cex=3,aes(colour = f.day)) + 
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
+               geom="errorbar", color="black", width=0.5) + 
+  stat_compare_means(data=agg, comparisons = list(c("Control","Arpc1b")), method="t.test", paired=TRUE) +
+  theme(legend.position="none")+
+  # Add labels
+  labs(
+    x = "",
+    y = "mean cumulative distance",
+    title = "Figure 4",
+    subtitle = "Arpc1b KO travel shorter distances"
+  ) 
+bee.plot
+
+```
+```{r super_gain, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
+
+# Generate figure
+bee.plot <- ggplot(agg, aes(x = cell_line, y = net_gain, colour = f.day)) +
+  geom_beeswarm(cex=3) +
+  scale_colour_brewer(palette = "Set1") +
+  facet_wrap(~stimulus)+
+  stat_summary(fun.y = "mean", geom = "point", size = 3, color = "black") +
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
+               geom="errorbar", color="black", width=0.5) + 
+   stat_compare_means(data=agg, comparisons = list(c("Control","Arpc1b")), method="t.test", paired=TRUE) +
+  theme(legend.position="none")+
+  # Add labels
+  labs(
+    x = "",
+    y = "mean gain towards source in uM",
+    title = "Figure 5",
+    subtitle = "Arpc1b KO cells still make progress toward the chemoattractant source"
+  ) 
+bee.plot
+```
+
+
+
+## Accounting for day-to-day variation in cell motility
+Cell-behavior and the population level can be difficult to quantify, and high-levels of variation across replicates can hinder statistical analysis. As shown in Figure 6, there is random variation in the population intercept (mean) by day. This variation can be explained by differences in environment (e.g. incubator temperature, humidity etc.). Though not shown here, other motility metrics such as distance traveled, directional index, accuracy etc. display similar variation by day. Note that the effect of Arpc1b KO (difference between control and KO means) on cell speed is consistent. For any given day, KO cells display a defect in speed. 
+
+```{r speed_scatter, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('png', 'svg')}
+# Generate figure
+scatter.plot <- ggplot(data_clean, aes(x = cell_line, y = cell_speed, colour = cell_line)) +
+  geom_jitter(aes(alpha = 0.3)) +
+  scale_colour_manual(values = c("#f1a340", "#998ec3")) +
+  facet_grid(~f.day) +
+  
+  stat_summary(fun.y = "mean", geom = "point", size = 3, color = "black") +
+
+  # Add labels
+  labs(
+    x = "Experimental Day",
+    y = "mean cell speed during free motility uM/second",
+    title = "Figure 6",
+    subtitle = "Arpc1b KO cells are consistently slower than Control cells"
+  ) + 
+  theme_Briana() +
+  theme(
+    axis.text.x = element_blank()
+  )
+scatter.plot
+```
+
+## Defining a linear mixed-effects model to account for random-effects
+To account for day-to-day variation, a linear mixed-effect model was fit to the data with cell speed as the dependent variable, cell line, stimulus added and the interaction between them as fixed effects, while experimental day and slide within day were treated as random effects. In addition, a term was added to allow fixed effects of cell line/stimulation to vary by day (i.e., perturbations in these fixed effects due to biological source material). The following table includes a summary of the model estimates. The default values are Control cells with fMLF as the stimulant. Relative to control cells, the Arpc1b KO has an estimated slope of -0.02 (with confidence intervals of 0.04-0.00), indicating that these cells are slower overall. As expected, high concentrations of C5a were estimated to have a negative effect on cell-speed. Addition of 3uM C5a had an insignificant impact on cell speed.  
+
+```{r, echo = TRUE}
+# Define mixed-effects model
+mixed.speed <- lmer( cell_speed ~ cell_line*stimulus + (1|f.day) + 
+                       (1|f.day:slide), data=agg, REML=T)
+tab_model(mixed.speed, show.re.var = TRUE, show.r2 = FALSE)
+```
+
+
+## Test interactions between cell line and stumulus
+Here, the drop1 function is used to systematically test the effects of dropping terms from the model until optimal. The effect on speed that we see in the Arpc1b KO cells is not dependent on the stimulus added ($F_{2,56}$ = 0.3607, $p$ = 0.6988). Rather, Arpc1b KO cells are slower than Control cells for all attractants tested. 
+```{r}
+
+drop1(mixed.speed, ddf = "Kenward-Roger")
+```
+
+## Calculating the estimated mean speed for each cell line
+The average cell speed was estimated at 0.1089 $\mu$M/s for Control cells (`r 0.1089*60` $\mu$$M$/minute) and 0.0899 $\mu$M/second (`r 0.0899*60` $\mu$$M$ /minute) for Arpc1b cells. The estimated effect size is 0.019 $\mu$$M$/second (`r 0.014*60` $\mu$M/minute). Note that these values are averaged across stimuli. The estimated effect is a decrease in speed by 0.019 $\mu$M/second (`r 0.019*60` $\mu$M/minute) for Arpc1b KO cells. 
+```{r}
+# Estimate means by cell line
+emmeans(mixed.speed, "cell_line")
+pairs( emmeans(mixed.speed, "cell_line"))
+
+```
+
+
+## Random effects make summary plots difficult to interpret
+Figure 3 contains a box plot representing the mean cell speed aggregated by cell line and stimulus. Here, the data from all days is combined. Although you can clearly see the consistent effect described above, the overlapping boxes might lead one to conclude that the effect is not significant. An alternative approach is to calculate the estimated effect size for each metric as well as confidence intervals and plot the result. 
+
+```{r speed_box,  echo = FALSE, fig.path='figures/', dev=c('png', 'svg')}
+
+data <- subset(data_clean, data_clean$stimulus != "PBS") # load data organized and cleaned in previous step
+
+speed_boxplot <- ggplot(data, aes(x = stimulus, y = cell_speed)) +
+  facet_wrap(~stimulus) + 
+  geom_boxplot(outlier.shape=NA, fill="#B3B3B3") +
+  geom_beeswarm(cex=3,aes(colour=f.day)) + 
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
+               geom="errorbar", color="black", width=0.5) + 
+  stat_compare_means(data=agg, comparisons = list(c("Control","Arpc1b")), method="t.test", paired=TRUE) +
+  theme(legend.position="none")+
+  # Add labels
+  labs(
+    x = "stimulus",
+    y = "mean cell speed in microns per second",
+    title = "Figure 7",
+    subtitle = "Arpc1b KO cells are consistently slower than Control cells"
+  ) +
+  #scale_fill_manual(values = c("#f1a340", "#998ec3")) + # apply color-blind friendly color palette
+
+  #theme_Briana() # deploy custom theme 
+  speed_boxplot
+
+```
+
+## Calculating the effect size for cell speed during periods of free motility
+The linear-mixed effects model has several useful advantages. It allows us to estimate the means of the data (given the variability), determine which if any of our fixed effects are predictive of an observed difference between test and control populations and identify with confidence how much of an effect these predictive fixed effects have on the outcome. Another way you can summarize data with significant random variabilility is to calculate the "effect size". Even though we saw significant variation in basal speed from day to day, the KO cells were consistently slower. It turns out that the difference between control and KO cells for any given day is very consistent. 
+
+To calculate the effect size, aggregated cell speed data was averaged across all stimuli per day. A data frame was created to store the effect and confidence intervals for plotting later. Given that Arpc1b reduces speed,
+The mean speed for the control cells was subracted from the mean cell speed for the KO cells resulting in a negative value. This will be more intuitive for plotting later. To obtain the estimated mean and confidence intervals for the effect size, a one-sample t-test was used. 
+
+```{r effect_speed, include = FALSE}
+# Load data, build data frame with effects for each metric
+wksp <- data
+day = unique(data_clean$f.day)
+effect_speed = data.frame(day)
+
+# Aggregate data
+# During data organization, cell speed was summed. J was given a value of 1 for each cell and thus, represents the number of obervations that were summed.
+# Here, we divide by J to get an average cell speed across all days. 
+( tt <- with(wksp, tapply( I(cell_speed/J*60), list(stimulus, cell_line, f.day), mean, na.rm=TRUE))) 
+( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
+tt <- tt[!is.na(tt[,1]), ]
+# Form differences between control and KO for each day.
+effect_speed <- data.frame(value = tt[,2] - tt[,1]) %>%
+  mutate(metric = "mean cell speed") 
+
+# Get confidence intervals for effect
+cis <- t.test((tt[,2] - tt[,1])/tt[,1])
+cis_df <- data.frame(cbind(metric = "mean cell speed", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
+
+```
+
+## Testing the effects of Arpc1b KO on remaining motility metrics
+The process carried out for cell speed was repeated for the remaining metrics: directionality index, cumulative distance traveled, net distance gained toward source, directional accuracy and confinement radius. The code is omitted for brevity, but a summary output for each motility metric is included.
+
+## Directionality Index
+
+```{r DI, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+mod_out <- lmer( directionality_index ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
+            data=agg, REML=T)
+ 
+( tt <- with(wksp, tapply( directionality_index, list(stimulus, cell_line, f.day), mean, na.rm=TRUE))) 
+( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
+tt <- tt[!is.na(tt[,1]), ]
+
+effect_di <- data.frame(value = tt[,2] - tt[,1]) %>%
+  mutate(metric = "Directionality Index") 
+cis <- t.test((tt[,2] - tt[,1])/tt[,1])
+temp <- data.frame(cbind(metric = "directionality_index", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
+cis_df <- rbind(cis_df, temp)
+
+```
+
+```{r, echo = FALSE, results = TRUE}
+drop1(mod_out, ddf="Kenward-Roger")
+
+emmeans(mod_out, "cell_line") 
+pairs( emmeans(mod_out, "cell_line") ) 
+```
+
+
+## Cumulative Distance
+
+```{r distance, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+mod_out <- lmer( cumulative_distance ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
+            data=agg, REML=T)
+effect_sspeed = data.frame(day)
+( tt <- with(wksp, tapply( cumulative_distance, list(stimulus, cell_line, f.day), mean, na.rm=TRUE ))) 
+( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
+tt <- tt[!is.na(tt[,1]), ]
+effect_distance <- data.frame(value = tt[,2] - tt[,1])%>%
+  mutate(metric = "cumulative_distance") 
+cis <- t.test((tt[,2] - tt[,1])/tt[,1])
+temp <- data.frame(cbind(metric = "cumulative_distance", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
+cis_df <- rbind(cis_df, temp)
+```
+
+```{r, echo = FALSE, results = TRUE}
+drop1(mod_out, ddf="Kenward-Roger")
+
+emmeans(mod_out, "cell_line") # 0.0990 for control; 0.0829 for KO
+pairs( emmeans(mod_out, "cell_line") ) 
+```
+
+## Net distance gained toward source
+
+```{r net gain, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+mod_out <- lmer( net_gain ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
+            data=agg, REML=T)
+
+( tt <- with(wksp, tapply( net_gain, list(stimulus, cell_line, f.day), mean ))) 
+( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
+
+tt <- tt[!is.na(tt[,1]), ]
+
+effect_gain <- data.frame(value = tt[,2] - tt[,1]) %>%
+  mutate(metric = "net_gaim")
+
+cis <- t.test((tt[,2] - tt[,1])/tt[,1])
+temp <- data.frame(cbind(metric = "net_gain", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
+cis_df <- rbind(cis_df, temp)
+```
+
+```{r, echo = FALSE, results = TRUE}
+drop1(mod_out, ddf="Kenward-Roger")
+
+emmeans(mod_out, "cell_line") 
+pairs( emmeans(mod_out, "cell_line") ) 
+```
+## Directional Accuracy
+
+```{r dc, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+mod_out <- lmer( diff_coeff ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
+            data=agg, REML=T)
+ 
+( tt <- with(wksp, tapply( diff_coeff, list(stimulus, cell_line, f.day), mean ))) 
+( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
+tt <- tt[!is.na(tt[,1]), ]
+
+effect_accuracy <- data.frame(value = tt[,2] - tt[,1]) %>%
+  mutate(metric = "diff_coeff")
+
+cis <- t.test((tt[,2] - tt[,1])/tt[,1])
+temp <- data.frame(cbind(metric = "diff_coeff", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
+cis_df <- rbind(cis_df, temp)
+```
+
+```{r, echo = FALSE, results = TRUE}
+drop1(mod_out, ddf="Kenward-Roger")
+
+emmeans(mod_out, "cell_line") 
+pairs( emmeans(mod_out, "cell_line") ) 
+```
+
+## Confinement radius
+
+```{r confinement radius, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+mod_out <- lmer( confinement_radius ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
+            data=agg, REML=T)
+ 
+( tt <- with(wksp, tapply( confinement_radius , list(stimulus, cell_line, f.day), mean, na.rm = TRUE ))) 
+( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
+tt <- tt[!is.na(tt[,1]), ]
+
+effect_cr <- data.frame(value = tt[,2] - tt[,1]) %>%
+  mutate(metric = "confinement_radius ") 
+
+cis <- t.test((tt[,2] - tt[,1])/tt[,1])
+temp <- data.frame(cbind(metric = "confinement_radius ", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
+cis_df <- rbind(cis_df, temp)
+```
+
+```{r, echo = FALSE, results = TRUE}
+drop1(mod_out, ddf="Kenward-Roger")
+
+emmeans(mod_out, "cell_line") 
+pairs( emmeans(mod_out, "cell_line") ) 
+```
+
+
+## Graphical representations of the effects of Arpc1b KO on various cell motility metrics
+From here, I aggregated the effect sizes calculated above into a convenient data structure for plotting the effect size by metric. The default value is Arpc1b KO (The control value was subtracted from the KO value). Since Arpc1b KO causes defects, setting it as the default results in more intuitive graphs where the effect is represented as a negative number. To ensure comparable axis, data was normalized by dividing by the control value. Thus, the effect size can be interpreted as a percent. The line segments represent the span between the upper and lower confidence intervals. An effect size that crosses 0 is interpreted as having no significant effect. Figure 4 indicates that Arpc1b KO results in significant defects in speed, that cells are more confined and less directional (that is, they meander more). 
+
+```{r effect sizes, message = FALSE, warning = FALSE, fig.path='figures/', dev=c('png', 'svg')}
+
+# Figure setup
+# Convert cis_df$estimate and conf ints to numeric
+cis_df$estimate <- as.numeric(cis_df$estimate)
+cis_df$Upper <- as.numeric(cis_df$Upper)
+cis_df$Lower <- as.numeric(cis_df$Lower)
+
+# Print results to a table
+effect_tab = cbind(cis_df$metric, cis_df$estimate, cis_df$Lower, cis_df$Upper) 
+  
+knitr::kable(effect_tab, col.names = c('Metric','Estimated Effect','Lower CI','Upper CI'))
+
+# Initialize plot
+effect_plot <- ggplot(cis_df, aes(x = 1, y = I(estimate))) +
+  geom_linerange(aes(ymin = I(Lower), ymax = I(Upper), size = 2)) +
+  geom_hline(yintercept = 0) +
+  facet_wrap(~metric) + 
+  
+  scale_y_continuous(labels = scales::number_format(accuracy = 0.01)) + 
+  labs(
+    y = "Estimated Effect Size",
+    title = "Figure 8",
+    subtitle = "The effect of Arpc1b KO on motility metrics"
+  ) +
+  theme_Briana() +
+  theme(legend.position = "none",
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank()
+  ) 
+
+effect_plot
+```
+
+
+## Summary
+
+Here we find that depletion of Arpc1b in PLB985 cells has a significant impact on numerous aspects of motility including an estimated 19.9% decrease in cell speed, a 24.1% decrease in directionality index (meaning cells meander more), and a modest decrease of 5.0% in cumulative distance traveled. Arpc1b KO cells approch chemoattractant sources at less accurate angles (38.4% decrease in accuracy) and are overall more confined with a striking 29.7% decrease in their average confinement radius. Despite these defects, KO cells still make progress toward the chemoattractant source indicating that they are still able to bias their movement despite these various motility challenges. 
+
+
+# Part 2: Advanced Motility Analysis
+By now, we can make the case that PLB985 cells are a good model for studying the effects of Arpc1b depletion. Like patient neutrophils, they are slower and form more fillipodia due to their inability to generate branched-actin filaments. 
+
+Next, we wanted to determine whether the decrease in mean cell speed associated with Arpc1b depletion was due to a decreased capacity to reach comparable speeds, or because the KO cells pause more than control cells. Like Arpc1b, mutations in the functional domains of the WASp protein also disrupt branched actin formation. Patints with WASp mutations exhibit primary immunodeficiencies that present similarly to those with Arpc1b mutations. Rebecca Jones et al. (*[J Cell Sci, 2013](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3772384/)*) found that neutrophils with WASp mutations paused more often during motility than control cells, and that their average pause time was longer. Using a similar analytical strategy, I calculated the average number of pauses and the mean pause duration at the single-cell level. Pauses were defined as >= 1 minute with less than 0.5 pixel difference in location (Imaris generates tracks with sub-pixel resolution. In our setup, 1 pixel = 1.27uM). Only full-length tracks were considered. 
+
+The superplot below (as well as those above) were based on the tutorial from Lord et al. (*[JCB, 2020](https://rupress.org/jcb/article/219/6/e202001064/151717/SuperPlots-Communicating-reproducibility-and)*).
+
+## Number of Pauses
+```{r number of pauses, message = FALSE, warning = FALSE, fig.path='figures/', dev=c('png', 'svg')}
+
+
+```
+
+## Pause Duration
+```{r pause duration, message = FALSE, warning = FALSE, fig.path='figures/', dev=c('png', 'svg')}
+```
