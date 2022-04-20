@@ -1,4 +1,4 @@
-function expData = createUserInputs(masterPath, timeInSec, numFrames, pixUnit, src_type, process_all, dataOrganization, min_track_length)
+function expData = createUserInputs(masterPath, timeInSec, numFrames, pixUnit, src_type, process_all, dataOrganization, min_track_length, make_tracks_movie, smooth_frame_step)
 
 
 % ------------- STEP 1 ---------------------
@@ -13,7 +13,8 @@ warnNum = 0;
 warning('off','MATLAB:table:ModifiedAndSavedVarnames')
 
 % Write table for storing inputs:
-T = cell(6,2);
+%T = cell(6,2);
+
 T{2,1} = 'Time in Sec';
 T{2,2} = timeInSec;
 T{3,1} = 'Number of Frames';
@@ -23,15 +24,26 @@ T{4,2} = pixUnit;
 T{5,1} = 'Source Type';
 T{5,2} = src_type;
 T{6,1} = 'Process Option';
+
 if process_all == 1
     T{6,2} = 'TRUE';
 else
     T{6,2} = 'FALSE';
 end % if
+
 T{7,1} = 'Imaris File Type';
 T{7,2} = dataOrganization;
 T{8,1} = 'Min Track Length';
 T{8,2} = min_track_length;
+T{9,1} = 'Smoothing Frame Window';
+T{9,2} = smooth_frame_step;
+T{10,1} = 'Make Tracks Movie Option';
+
+if make_tracks_movie == 1
+    T{10,2} = 'TRUE';
+else
+    T{10,2} = 'FALSE';
+end % if
 
 heads = ["Step","ID","Status","Num_Errors"];
 
@@ -44,7 +56,6 @@ P{5,1} = 5;     P{5,2} = 'Classify Tracks';                     P{5,3} = 'Incomp
 P{6,1} = 7;     P{6,2} = 'Store processed data structure';      P{6,3} = 'Incomplete';  P{6,4} = 0;
 P{7,1} = 8;     P{7,2} = 'Quantify velocity by class';          P{7,3} = 'Incomplete';  P{7,4} = 0;
 P{8,1} = 9;     P{8,2} = 'Export Data to csv file';             P{8,3} = 'Incomplete';  P{8,4} = 0;
-
 
 
 expData.statusTracker = cell2table(P,'VariableNames',heads);
@@ -119,6 +130,24 @@ end % if ~isempty
 T{1,1} = 'ID';
 T{1,2} = expID;
 
+if process_all == 1
+    proc_all_temp = 'TRUE';
+else
+    proc_all_temp = 'FALSE';
+end % if
+
+if make_tracks_movie == 1
+    mtm_temp = 'TRUE';
+else
+    mtm_temp = 'FALSE';
+end % if
+
+% cell_temp = {expID; timeInSec; numFrames; pixUnit; src_type; proc_all_temp;...
+%     dataOrganization; min_track_length; smooth_frame_step; mtm_temp};
+% T = cell2table(cell_temp,'VariableNames', {'Value'},...
+%     'RowNames',{'ID' 'Time in Sec' 'Number of Frames' 'Pixel Size' 'Source Type'...
+%     'Process Option' 'Imaris File Type' 'Min Track Length' 'Smoothing Frame Window' 'Make Tracks Movie Option'});
+
 expData.ui = cell2table(T); % initualize table for storing user inputs
 clear T
 
@@ -137,9 +166,10 @@ dirs = unique(lut{:,2},'stable');
 expData.lut = lut;
 
 % create paths for storing outputs
-varPath = [masterPath 'Variables' filesep];
-graphPath = [masterPath 'Graphs' filesep];
-errorPath = [masterPath 'Error Logs' filesep];
+varPath = [masterPath 'output' filesep 'variables' filesep];
+graphPath = [masterPath 'output' filesep 'graphs' filesep];
+errorPath = [masterPath 'output' filesep 'error Logs' filesep];
+moviePath = [masterPath 'output' filesep 'tracking_movies' filesep];
 
 if ~exist(varPath)
     mkdir(varPath);
@@ -153,8 +183,12 @@ if ~exist(errorPath)
     mkdir(errorPath);
 end
 
+if ~exist(moviePath)
+    mkdir(moviePath);
+end
+
 fullFileName = strcat('createUserInputs - Error_Log_', datestr(date,'yyyy-mm-dd'), '_', '.txt');
-expData.outputPaths = {varPath; graphPath; errorPath}; % store output paths
+expData.outputPaths = {varPath; graphPath; errorPath; moviePath}; % store output paths
 
 % STEP 1 Status Tracker update
 expData.statusTracker{1,3} = {'Complete'};
@@ -166,9 +200,9 @@ expData.statusTracker{1,3} = {'Complete'};
 
 warnNum = 0; % tally for warnings encountered
 
-c = clock;
-timeStamp = strcat(num2str(c(4)),"_",num2str(c(5)),"_",(num2str(floor(c(6)))));
-clear c
+cell_temp = clock;
+timeStamp = strcat(num2str(cell_temp(4)),"_",num2str(cell_temp(5)),"_",(num2str(floor(cell_temp(6)))));
+clear cell_temp
 
 if iscell(lut) == 0
     lut = table2cell(lut);
