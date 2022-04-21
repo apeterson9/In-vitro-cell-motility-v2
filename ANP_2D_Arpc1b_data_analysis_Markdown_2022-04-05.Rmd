@@ -75,7 +75,9 @@ data_clean$f.day <- as.factor(data_clean$day)
 
 # re-aggregate the data without PBS and day 7
 agg <- data_clean
-agg <- aggregate( cbind(cell_speed, directionality_index, distance, accuracy, confinement_radius, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
+
+agg <- aggregate( cbind(track_length,cumul_distance,net_displacement,tortuosity, mean_velocity, mean_theta, mean_CI, num_pauses, pause_duration, confinement_radius, confined_vel, free_vel, super_vel, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
+
 agg <- cbind(agg[,1:4],agg[,5:9]/agg[,10])
 
 agg$trt <- apply(agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
@@ -106,23 +108,26 @@ theme_Briana <- function() {
 ## Superplot of cell speed by cell-line
 Numerous groups have reported motiity defects in neutrophils isolated from patients with Arpc1b mutations. These defects include decreased cell-speed and increased production of filipodia (due to inability to form branched actin filaments). PLB985 cells with an Arpc1b KO recapitulate these observations. Below, a superplot of cell speed where measurements are color-coded by experimental day.
 
-```{r super_speed, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
+```{r mean_velocity, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
 
+# keep this template but I think I can shorten this whole document by just putting this template for plotting in another script and just running that
+library(ggbeeswarm)
 # Generate figure
-bee.plot <- ggplot(agg, aes(x = cell_line, y = cell_speed)) + 
-  #scale_colour_brewer(palette = "PuOr") +
+bee.plot <- ggplot(agg, aes(x = cell_line, y = mean_velocity)) +
   facet_wrap(~stimulus) +
-  geom_boxplot(outlier.shape=NA, fill="#B3B3B3") +   
-  geom_beeswarm(cex=3,aes(colour=f.day)) + 
-  #scale_fill_brewer(direction = -1, palette = "PuOr") +
+  geom_boxplot(outlier.shape=NA, fill="#B3B3B3") + 
+  geom_beeswarm(cex=3, aes(colour=f.day)) +
+  scale_colour_brewer(palette = "PiYG") +
+  stat_summary(fun.y = "mean", geom = "point", size = 2, color = "black") +
   stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
                geom="errorbar", color="black", width=0.5) + 
-  stat_compare_means(data=agg, comparisons = list(c("Control","Arpc1b")), method="t.test", paired=TRUE) +
+  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
   theme(legend.position="none")+
+  
   # Add labels
   labs(
     x = "",
-    y = "Mean cell speed in uM/second",
+    y = "mean cell speed (uM/second)",
     title = "Figure 1",
     subtitle = "Arpc1b KO cells are consistently slower than Control cells"
   ) 
@@ -132,9 +137,9 @@ bee.plot
 ## Other motility defects
 Similarly, we find that PLB985-Arpc1bKO cells are less directional than their control-cell counterparts. They also have a smaller confinement radius and a shorter cumulative distance. However, our data show that their ability to make gains toward the chemoattractant source does not reach the level of significance. 
 
-```{r super_di, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
+```{r tortuosity, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
 # Generate figure
-bee.plot <- ggplot(agg, aes(x = cell_line, y = directionality_index)) + 
+bee.plot <- ggplot(agg, aes(x = cell_line, y = tortuosity)) + 
   facet_wrap(~stimulus) +
   geom_boxplot(outlier.shape=NA,fill="#B3B3B3") +   
   geom_beeswarm(cex=3,aes(colour = f.day)) + 
@@ -145,15 +150,15 @@ bee.plot <- ggplot(agg, aes(x = cell_line, y = directionality_index)) +
   # Add labels
   labs(
     x = "",
-    y = "Mean Directionality Index",
+    y = "Tortuosity",
     title = "Figure 2",
-    subtitle = "Arpc1b KO cells are less directional"
+    subtitle = "Arpc1b KO cells have less straight paths"
   ) 
 bee.plot
 ```
 ```{r super_cr, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
 # Generate figure
-bee.plot <- ggplot(agg, aes(x = cell_line, y = directionality_index)) + 
+bee.plot <- ggplot(agg, aes(x = cell_line, y = mean_CI)) + 
   facet_wrap(~stimulus) +
   geom_boxplot(outlier.shape=NA,fill="#B3B3B3") +   
   geom_beeswarm(cex=3,aes(colour = f.day)) + 
@@ -164,9 +169,9 @@ bee.plot <- ggplot(agg, aes(x = cell_line, y = directionality_index)) +
   # Add labels
   labs(
     x = "",
-    y = "mean confinement radius",
+    y = "Mean chemotactic index",
     title = "Figure 3",
-    subtitle = "Arpc1b KO cells are more confined"
+    subtitle = "Arpc1b KO cells have lower chemotactic index"
   ) 
 bee.plot
 ```

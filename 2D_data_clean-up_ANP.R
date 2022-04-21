@@ -1,4 +1,3 @@
-
 ## LOAD PACKAGES ####
 library(dplyr)
 library(purrr)
@@ -6,7 +5,7 @@ library(knitr)
 library(tidyverse)
 
 ## READ IN DATA
-DATA <- read_csv("C:/Users/anpet/cell_tracking-selected/variables - 2d/2D_formatted4R.csv")
+DATA <- read_csv("C:/Users/anpet/Desktop/2D_exp_full_data/movies/C5a movies/Arpc1b lines/2D/Variables/2D LUT_formatted4R.csv")
 
 #data_results <- list.files(path = "data", full.names = T) 
 #DATA <- read.csv(data_results)
@@ -17,25 +16,19 @@ head(DATA)
 
 
 # create new data structure with na values excluded
-# ANP edit: the column names must've been changed at some point, so I renamed them to match the CSV file
-wksp <- DATA[!is.na(DATA$mean_speed), ]
-wksp <- wksp[!is.na(wksp$DI), ]
-wksp <- wksp[!is.na(wksp$cumulative_distance), ]
-wksp <- wksp[!is.na(wksp$CI), ]
-wksp <- wksp[!is.na(wksp$accuracy), ]
-wksp <- wksp[!is.na(wksp$MI), ]
-wksp <- wksp[!is.na(wksp$CR), ]
-#wksp <- wksp[!is.na(wksp$mean_dc), ]
-
-# factor by day
-# ANP-keep the naming convention that f.day means the day column factored by day
-wksp$f.day <- as.factor(wksp$day)
+wksp <- DATA[!is.na(DATA$track_length), ]
+wksp <- wksp[!is.na(wksp$cumul_distance), ]
+wksp <- wksp[!is.na(wksp$net_displacement), ]
+wksp <- wksp[!is.na(wksp$tortuosity), ]
+wksp <- wksp[!is.na(wksp$mean_velocity), ]
+wksp <- wksp[!is.na(wksp$mean_theta), ]
+wksp <- wksp[!is.na(wksp$mean_CI), ]
+wksp <- wksp[!is.na(wksp$num_pauses), ]
+wksp <- wksp[!is.na(wksp$pause_duration), ]
 
 # Creating additional value, J and then aggregating data by summing over speed and J. Later, we will use the
 # value of summed J to divide for calculating mean speed
 wksp$J <- 1
-
-
 
 ## CLEAN DATA ####
 # Fix and update columns for results data, combine with other data
@@ -45,43 +38,37 @@ wksp$J <- 1
 # removed reference to net gain because it wasn't in the csv file
 # give more intelligible names
 # format: rename(new_name = old_name)
-data_clean = wksp %>%
-  #rename(cline = cell_line)  %>%
-  rename(cell_speed = mean_speed) %>% 
-  rename(directionality_index = DI)%>%
-  rename(distance = cumulative_distance) %>%
-  rename(chemotactic_index = CI) %>%
-  rename(confinement_radius = CR) %>%
-  rename(motility_index = MI)
-  #rename(f.stim = stimulus) %>%
-  #rename(diff_coeff = mean_dc) %>%
-select(data_clean, cell_line, stimulus, f.day, slide, id, J, cell_speed, chemotactic_index, directionality_index, distance, accuracy, motility_index, confinement_radius, num_pauses, pause_duration)
+
+
   
+#select(wksp, cell_line, stimulus, f.day, slide, id, J, track_length, cumul_distance, net_displacement,tortuosity,mean_velocity,mean_theta, mean_CI, num_pauses,pause_duration, confinement_radius, confined_vel, free_vel,super_vel)
 
-DATA <- subset(DATA, DATA$stimulus != "PBS")
-# factor data by stimulus
-DATA$f.stim <- factor(DATA$stimulus, levels=c("PBS","fMLF_1uM","Low_3uM_C5a","High_30uM_C5a"),labels=c("PBS","fMLF 1uM","C5a 3uM","C5a 30uM"))
-
-# factor data by cell line
-(a <- unique(DATA$cell_line))
-DATA$cell_line <- factor(DATA$cell_line, levels=a, labels=c("Control", "Arpc1b")) 
+# factor by cell line
+(a <- unique(wksp$cell_line)) # cline = cell line
+wksp$f.cell_line <- factor(wksp$cell_line, levels=a, labels=c("Control", "Arpc1b")) 
 rm(a)
+
+# ANP-keep the naming convention that f.day means the day column factored by day
+wksp$f.day <- as.factor(wksp$day)
+
+
+wksp <- subset(wksp, wksp$stimulus != "PBS")
+# factor data by stimulus
+wksp$f.stim <- factor(wksp$stimulus, levels=c("PBS","fMLF_1uM","Low_3uM_C5a","High_30uM_C5a"),labels=c("PBS","fMLF 1uM","C5a 3uM","C5a 30uM"))
 
 # Remove tracks of cells that didn't move. This should be already removed from Imaris settings
 wksp <- wksp[!is.na(wksp$num_pauses), ]
 #wksp <- wksp[!is.na(wksp$free_vel), ]
 
-# ANP-removed reference to vFree since it wasn't used or listed in the matlab output file
+# ANP-I don't think this is needed anymore
 motility_clean = wksp %>%
-  #rename(cell_line = cline)  %>%
   #rename(stimulus = f.stim) %>%
   #rename(vFree = free_vel) %>%
   select(cell_line, stimulus, f.day, slide, id, J, num_pauses)
 
-
 wksp <- wksp[!is.na(wksp$pause_duration), ]
 
-
+# ANP-I don't think this is needed anymore
 tPause_clean = wksp %>%
   #rename(cell_line = cline)  %>%
   #rename(stimulus = f.stim) %>%
@@ -97,17 +84,17 @@ tPause_clean = wksp %>%
 # is already mathematically confined (ex. CI between -1 and 1)
 
 # Get speed outlier information
-data_speed_sum = data_clean %>%
+data_speed_sum = wksp %>%
   group_by(cell_line, f.day, stimulus) %>%
-  summarise(speed_mean = mean(cell_speed),
-            speed_sd = sd(cell_speed)) %>%
+  summarise(speed_mean = mean(mean_velocity),
+            speed_sd = sd(mean_velocity)) %>%
   ungroup() %>%
   mutate(speed_high = speed_mean + (2 * speed_sd)) 
 
 # Remove any data points with excessively high speeds on the assumption that they are due to tracking errors
-data_clean = data_clean %>%
+wksp = wksp %>%
   inner_join(data_speed_sum) %>%
-  filter(cell_speed < speed_high) 
+  filter(mean_velocity < speed_high) 
 
 rm(data_speed_sum)
 
@@ -115,15 +102,15 @@ rm(data_speed_sum)
 ## CREATE AGGREGATE DATA
 # Aggregate takes all elements on the left side of the ~ and uses the given function on those values, while they are grouped by the values of the right side.
 # ANP-removed a reference to net_gain and diff_coeff in the aggregate function 
-agg <- data_clean
-agg <- aggregate( cbind(cell_speed, directionality_index, distance, accuracy, confinement_radius, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
+agg <- wksp
+agg <- aggregate( cbind(track_length,cumul_distance,net_displacement,tortuosity, mean_velocity, mean_theta, mean_CI, num_pauses, pause_duration, confinement_radius, confined_vel, free_vel, super_vel, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
+#agg <- aggregate( cbind(mean_velocity, directionality_index, distance, accuracy, confinement_radius, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
 
 agg <- cbind(agg[,1:4],agg[,5:9]/agg[,10])
-
+#agg <- cbind(agg[,1:4],agg[,5:9]/agg[,10])
 
 agg$trt <- apply(agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
 agg$trt <- as.factor(agg$trt)
-
 
 m_agg <- motility_clean
 
@@ -140,4 +127,4 @@ tPause_agg <- cbind(tPause_agg[1:4],tPause_agg[,5]/tPause_agg[,6])
 tPause_agg$trt <- apply(tPause_agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
 tPause_agg$trt <- as.factor(tPause_agg$trt)
 
-
+data_clean <- wksp
