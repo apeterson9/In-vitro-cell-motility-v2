@@ -20,4 +20,4 @@ This package has two main pieces:
 
 Use: See detailed documentation files for parameters and required user inputs.
 
-Example: This repository contains an
+Example: This repository contains a detailed analysis for an Arpc1b KO PLB and iPSC model to document lower cell velocity and a unique pausing phenotype. 
