@@ -1,10 +1,10 @@
 # In-vitro-cell-motility-v2
 
 Authors: 
-Jonathan Schrope
-Briana Rocha-Gregg
-Ashley Peterson
-Michael Lasarev
+Jonathan Schrope, 
+Briana Rocha-Gregg, 
+Ashley Peterson, 
+Michael Lasarev, 
 
 University of Wisconsin-Madison
 
