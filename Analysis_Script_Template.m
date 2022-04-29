@@ -18,15 +18,15 @@
 %masterPath = 'C:\Users\anpet\Desktop\2D_exp'; % home
 %masterPath = 'D:\Huttenlocher Lab\Ashley\C5a movies\Arpc1b lines\2D\';
 %masterPath = 'C:\Users\bxr007\OneDrive - UW-Madison\Data In Progress\Rescue lines'; % work
-
-masterPath = '/Users/jonschrope/Desktop/Huttlab/cell_tracking'; % Jon Desktop
+masterPath = 'Z:\Lab Huttenlocher\Ashley\2 Projects\Cell tracking\Movies\2D_testing_tracks';
+%masterPath = '/Users/jonschrope/Desktop/Huttlab/cell_tracking'; % Jon Desktop
 addpath(genpath(masterPath)); % Add all subfolders to the path
 masterPath = formatPath(masterPath); % add filesep to end of path
 
 src_type = 'line';
 process_all = 1;
 smooth_frame_step = 0; % number of frames to smooth tracks over
-make_tracks_movie = 0; % 1 if you want to save tracking movie, 0 if no
+make_tracks_movie = 1; % 1 if you want to save tracking movie, 0 if no
 timeInSec = 30; % frequency in seconds of images
 pixUnit = 1.27; % size of 1 pixel in uM NOTE: Nikon 10X = 0.788 %1.27
 numFrames = 91; % added functionality to automatically determine number of frames - has not been extensively tested.

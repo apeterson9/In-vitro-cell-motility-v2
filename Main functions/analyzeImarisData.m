@@ -136,7 +136,7 @@ for iDir = 1:length(dirs) % For each directory (movie)
 
                 save_path = [masterPath 'output' filesep 'tracking_movies' filesep [dirs{iDir} filesep reps{iWell}]];
 
-                vis_Imaris_tracks(rep,IMS,table2array(allData),sfw,ps,save_path,mtmo)
+                vis_Imaris_tracks(rep,IMS,table2array(allData),sfw,ps,save_path,mtmo);
 
                 clear uis; clear sfw_row; clear sfw; clear mtmo_row; clear mtmo;
                 clear ps_row; clear ps;
