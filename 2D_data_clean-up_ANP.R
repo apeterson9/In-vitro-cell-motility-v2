@@ -5,7 +5,8 @@ library(knitr)
 library(tidyverse)
 
 ## READ IN DATA
-DATA <- read_csv("C:/Users/anpet/Desktop/2D_exp_full_data/movies/C5a movies/Arpc1b lines/2D/Variables/2D LUT_formatted4R.csv")
+#DATA <- read_csv("C:/Users/anpet/Desktop/2D_exp_full_data/movies/C5a movies/Arpc1b lines/2D/Variables/2D LUT_formatted4R.csv")
+DATA <- read_csv("C:/Users/axp701/In-vitro-cell-motility-v2/2D LUT_formatted4R.csv")
 
 #data_results <- list.files(path = "data", full.names = T) 
 #DATA <- read.csv(data_results)
@@ -103,11 +104,14 @@ rm(data_speed_sum)
 # Aggregate takes all elements on the left side of the ~ and uses the given function on those values, while they are grouped by the values of the right side.
 # ANP-removed a reference to net_gain and diff_coeff in the aggregate function 
 agg <- wksp
-agg <- aggregate( cbind(track_length,cumul_distance,net_displacement,tortuosity, mean_velocity, mean_theta, mean_CI, num_pauses, pause_duration, confinement_radius, confined_vel, free_vel, super_vel, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
+agg <- aggregate( cbind(track_length,cumul_distance,net_displacement,tortuosity, mean_velocity, mean_theta, mean_CI, num_pauses, pause_duration, confinement_radius, confined_vel, free_vel, super_vel, J) 
+                  ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
 #agg <- aggregate( cbind(mean_velocity, directionality_index, distance, accuracy, confinement_radius, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
 
-agg <- cbind(agg[,1:4],agg[,5:9]/agg[,10])
-#agg <- cbind(agg[,1:4],agg[,5:9]/agg[,10])
+agg <- cbind(agg[,1:4],agg[,5:17]/agg[,18])
+#first part is the organizing data (day, stimulus, cell line, etc.)
+#second part is all the metrics
+#third part is the J column
 
 agg$trt <- apply(agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
 agg$trt <- as.factor(agg$trt)

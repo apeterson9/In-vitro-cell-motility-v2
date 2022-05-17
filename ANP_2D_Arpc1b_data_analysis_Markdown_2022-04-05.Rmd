@@ -78,7 +78,7 @@ agg <- data_clean
 
 agg <- aggregate( cbind(track_length,cumul_distance,net_displacement,tortuosity, mean_velocity, mean_theta, mean_CI, num_pauses, pause_duration, confinement_radius, confined_vel, free_vel, super_vel, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
 
-agg <- cbind(agg[,1:4],agg[,5:9]/agg[,10])
+agg <- cbind(agg[,1:4],agg[,5:17]/agg[,18])
 
 agg$trt <- apply(agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
 agg$trt <- as.factor(agg$trt)
@@ -89,8 +89,8 @@ agg$trt <- as.factor(agg$trt)
 ### Define color palette and custom figure theme.
 *Color palette via [COLORBREWER 2.0](https://colorbrewer2.org/#type=sequential&scheme=BuGn&n=3)*
 ```{r color palette, echo = FALSE}
-Day_colors = brewer.pal(length(levels(data_clean$f.day)), "Dark2")
-names(Day_colors) <- levels(data_clean$f.day)
+Day_colors = brewer.pal(length(levels(agg$f.day)), "Dark2")
+names(Day_colors) <- levels(agg$f.day)
 colScale <- scale_colour_manual(name = "f.day", values = Day_colors)
 
 # Generate theme
@@ -106,7 +106,7 @@ theme_Briana <- function() {
 }
 ```
 ## Superplot of cell speed by cell-line
-Numerous groups have reported motiity defects in neutrophils isolated from patients with Arpc1b mutations. These defects include decreased cell-speed and increased production of filipodia (due to inability to form branched actin filaments). PLB985 cells with an Arpc1b KO recapitulate these observations. Below, a superplot of cell speed where measurements are color-coded by experimental day.
+Numerous groups have reported motility defects in neutrophils isolated from patients with Arpc1b mutations. These defects include decreased cell-speed and increased production of filipodia (due to inability to form branched actin filaments). PLB985 cells with an Arpc1b KO recapitulate these observations. Below, a superplot of cell speed where measurements are color-coded by experimental day.
 
 ```{r mean_velocity, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
 
@@ -118,7 +118,7 @@ bee.plot <- ggplot(agg, aes(x = cell_line, y = mean_velocity)) +
   geom_boxplot(outlier.shape=NA, fill="#B3B3B3") + 
   geom_beeswarm(cex=3, aes(colour=f.day)) +
   scale_colour_brewer(palette = "PiYG") +
-  stat_summary(fun.y = "mean", geom = "point", size = 2, color = "black") +
+  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
   stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
                geom="errorbar", color="black", width=0.5) + 
   stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
@@ -143,10 +143,12 @@ bee.plot <- ggplot(agg, aes(x = cell_line, y = tortuosity)) +
   facet_wrap(~stimulus) +
   geom_boxplot(outlier.shape=NA,fill="#B3B3B3") +   
   geom_beeswarm(cex=3,aes(colour = f.day)) + 
+  scale_colour_brewer(palette = "PiYG") +
+  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
   stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
                geom="errorbar", color="black", width=0.5) + 
-  stat_compare_means(data=agg, comparisons = list(c("Control","Arpc1b")), method="t.test", paired=TRUE) +
-  theme(legend.position="none")+
+  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
+  theme(legend.position="none") +
   # Add labels
   labs(
     x = "",
@@ -156,61 +158,68 @@ bee.plot <- ggplot(agg, aes(x = cell_line, y = tortuosity)) +
   ) 
 bee.plot
 ```
-```{r super_cr, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
+```{r net_displacement, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
 # Generate figure
-bee.plot <- ggplot(agg, aes(x = cell_line, y = mean_CI)) + 
+bee.plot <- ggplot(agg, aes(x = cell_line, y = net_displacement)) + 
+  facet_wrap(~stimulus) +
+  geom_boxplot(outlier.shape=NA, fill="#B3B3B3") +   
+  geom_beeswarm(cex=3,aes(colour = f.day)) + 
+  scale_colour_brewer(palette = "PiYG") +
+  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
+               geom="errorbar", color="black", width=0.5) + 
+  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
+  theme(legend.position="none")+
+  # Add labels
+  labs(
+    x = "",
+    y = "Net displacement (uM)",
+    title = "Figure 3",
+    subtitle = "Arpc1b KO cells travel shorter distances"
+  ) 
+bee.plot
+```
+
+```{r track_length, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
+
+bee.plot <- ggplot(agg, aes(x = cell_line, y = track_length)) + 
   facet_wrap(~stimulus) +
   geom_boxplot(outlier.shape=NA,fill="#B3B3B3") +   
   geom_beeswarm(cex=3,aes(colour = f.day)) + 
+  scale_colour_brewer(palette = "PiYG") +
+  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
   stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
                geom="errorbar", color="black", width=0.5) + 
-  stat_compare_means(data=agg, comparisons = list(c("Control","Arpc1b")), method="t.test", paired=TRUE) +
+  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
+  theme(legend.position="none")+
+  # Add labels
+  labs(
+    x = "",
+    y = "Mean track length",
+    title = "Figure 4",
+    subtitle = "Arpc1b KO cells have longer track lengths"
+  ) 
+bee.plot
+
+```
+
+```{r chemotactic_index, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
+
+# Generate figure
+bee.plot <- ggplot(agg, aes(x = cell_line, y = mean_CI)) +
+ facet_wrap(~stimulus) +
+  geom_boxplot(outlier.shape=NA,fill="#B3B3B3") +   
+  geom_beeswarm(cex=3,aes(colour = f.day)) + 
+  scale_colour_brewer(palette = "PiYG") +
+  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
+               geom="errorbar", color="black", width=0.5) + 
+  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
   theme(legend.position="none")+
   # Add labels
   labs(
     x = "",
     y = "Mean chemotactic index",
-    title = "Figure 3",
-    subtitle = "Arpc1b KO cells have lower chemotactic index"
-  ) 
-bee.plot
-```
-```{r super_dist, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
-
-bee.plot <- ggplot(agg, aes(x = cell_line, y = distance)) + 
-  facet_wrap(~stimulus) +
-  geom_boxplot(outlier.shape=NA,fill="#B3B3B3") +   
-  geom_beeswarm(cex=3,aes(colour = f.day)) + 
-  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
-               geom="errorbar", color="black", width=0.5) + 
-  stat_compare_means(data=agg, comparisons = list(c("Control","Arpc1b")), method="t.test", paired=TRUE) +
-  theme(legend.position="none")+
-  # Add labels
-  labs(
-    x = "",
-    y = "mean cumulative distance",
-    title = "Figure 4",
-    subtitle = "Arpc1b KO travel shorter distances"
-  ) 
-bee.plot
-
-```
-```{r super_gain, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
-
-# Generate figure
-bee.plot <- ggplot(agg, aes(x = cell_line, y = net_gain, colour = f.day)) +
-  geom_beeswarm(cex=3) +
-  scale_colour_brewer(palette = "Set1") +
-  facet_wrap(~stimulus)+
-  stat_summary(fun.y = "mean", geom = "point", size = 3, color = "black") +
-  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
-               geom="errorbar", color="black", width=0.5) + 
-   stat_compare_means(data=agg, comparisons = list(c("Control","Arpc1b")), method="t.test", paired=TRUE) +
-  theme(legend.position="none")+
-  # Add labels
-  labs(
-    x = "",
-    y = "mean gain towards source in uM",
     title = "Figure 5",
     subtitle = "Arpc1b KO cells still make progress toward the chemoattractant source"
   ) 
@@ -224,24 +233,29 @@ Cell-behavior and the population level can be difficult to quantify, and high-le
 
 ```{r speed_scatter, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('png', 'svg')}
 # Generate figure
-scatter.plot <- ggplot(data_clean, aes(x = cell_line, y = cell_speed, colour = cell_line)) +
-  geom_jitter(aes(alpha = 0.3)) +
-  scale_colour_manual(values = c("#f1a340", "#998ec3")) +
+scatter.plot <- ggplot(data_clean, aes(x = cell_line, y = free_vel, colour = cell_line)) +
+  geom_jitter(alpha = 0.3) +
+  scale_colour_manual(values = c("#c51b7d","#4d9221")) +
+  #scale_colour_manual(values = c("#f1a340", "#998ec3")) +
   facet_grid(~f.day) +
   
   stat_summary(fun.y = "mean", geom = "point", size = 3, color = "black") +
+  
 
   # Add labels
   labs(
     x = "Experimental Day",
     y = "mean cell speed during free motility uM/second",
     title = "Figure 6",
-    subtitle = "Arpc1b KO cells are consistently slower than Control cells"
+    subtitle = "Arpc1b KO cells are consistently slower than Control cells",
+    fill = "cell line"
   ) + 
   theme_Briana() +
   theme(
     axis.text.x = element_blank()
-  )
+  ) 
+
+#scatter.plot <- scatter.plot + guides(fill=guide_legend(title="cell line")) 
 scatter.plot
 ```
 
@@ -250,7 +264,7 @@ To account for day-to-day variation, a linear mixed-effect model was fit to the 
 
 ```{r, echo = TRUE}
 # Define mixed-effects model
-mixed.speed <- lmer( cell_speed ~ cell_line*stimulus + (1|f.day) + 
+mixed.speed <- lmer( mean_velocity ~ cell_line*stimulus + (1|f.day) + 
                        (1|f.day:slide), data=agg, REML=T)
 tab_model(mixed.speed, show.re.var = TRUE, show.r2 = FALSE)
 ```
