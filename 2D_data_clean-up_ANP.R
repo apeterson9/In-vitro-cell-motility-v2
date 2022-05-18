@@ -99,36 +99,3 @@ wksp = wksp %>%
 
 rm(data_speed_sum)
 
-
-## CREATE AGGREGATE DATA
-# Aggregate takes all elements on the left side of the ~ and uses the given function on those values, while they are grouped by the values of the right side.
-# ANP-removed a reference to net_gain and diff_coeff in the aggregate function 
-agg <- wksp
-agg <- aggregate( cbind(track_length,cumul_distance,net_displacement,tortuosity, mean_velocity, mean_theta, mean_CI, num_pauses, pause_duration, confinement_radius, confined_vel, free_vel, super_vel, J) 
-                  ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
-#agg <- aggregate( cbind(mean_velocity, directionality_index, distance, accuracy, confinement_radius, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
-
-agg <- cbind(agg[,1:4],agg[,5:17]/agg[,18])
-#first part is the organizing data (day, stimulus, cell line, etc.)
-#second part is all the metrics
-#third part is the J column
-
-agg$trt <- apply(agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
-agg$trt <- as.factor(agg$trt)
-
-m_agg <- motility_clean
-
-#ANP-removed a reference to vFree because it didn't seem to be real numbers
-#m_agg <- aggregate( cbind(num_pauses, vFree, J) ~f.day + slide + cell_line + stimulus, data = m_agg, FUN=sum)
-m_agg <- aggregate( cbind(num_pauses, J) ~f.day + slide + cell_line + stimulus, data = m_agg, FUN=sum)
-m_agg <- cbind(m_agg[1:4],m_agg[,5]/m_agg[,6])
-m_agg$trt <- apply(m_agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
-m_agg$trt <- as.factor(m_agg$trt)
-
-tPause_agg <- tPause_clean
-tPause_agg <- aggregate( cbind(pause_duration, J) ~f.day + slide + cell_line + stimulus, data = tPause_agg, FUN=sum)
-tPause_agg <- cbind(tPause_agg[1:4],tPause_agg[,5]/tPause_agg[,6])
-tPause_agg$trt <- apply(tPause_agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
-tPause_agg$trt <- as.factor(tPause_agg$trt)
-
-data_clean <- wksp

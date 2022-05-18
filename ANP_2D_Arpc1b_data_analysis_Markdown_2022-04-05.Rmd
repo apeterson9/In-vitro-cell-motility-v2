@@ -5,6 +5,10 @@ authors: "Briana Rocha-Gregg, Michael Lasarev"
 date: "06/24/2021"
 fontsize: 9pt
 theme: "readable"
+output:
+  html_document:
+    keep_md: true
+    
 ---
 ## Summary
 The purpose of this document is to summarize the statistical analysis of the effects of Arpc1b KO on the motility patterns of PLB985 cells responding to stimuli *in vitro*. Imaris cell-tracking software was used to track individual cells and compute cell-speed. The output files from Imaris were transferred into MATLAB for processing and computation of additional motility metrics including: 
@@ -56,12 +60,13 @@ library(tufte)
 library(ggpubr)
 library(ggbeeswarm)
 
-knitr::opts_knit$set(root.dir = 'C:/Users/anpet/Desktop/2D_exp_full_data/movies/C5a movies/Arpc1b lines/2D/R code/2022-04-05/')
+#knitr::opts_knit$set(root.dir = 'C:/Users/anpet/Desktop/2D_exp_full_data/movies/C5a movies/Arpc1b lines/2D/R code/2022-04-05/')
+knitr::opts_knit$set(root.dir = 'C:/Users/axp701/Desktop/R code/2022.05.18')
 #knitr::opts_knit$set(root.dir = 'D:/Huttenlocher Lab/Ashley/C5a movies/Arpc1b lines/R code/2D/2021-06-30/')
 ```
 
 ### Load Data
-Raw data files are loaded and organized in another script. Briefly, data headers were edited for clarity, experimental day was converted to a factor, and speeds in excess of 2*SD were removed as they are not physiologically relevant and likely caused by drift.
+Raw data files are loaded and organized in another script. Briefly, data headers were edited for clarity, experimental day was converted to a factor, and speeds in excess of 2*SD were removed as they are not physiologically relevant and likely caused by drift. We also opted to remove conditions run with PBS as a chemoattractant source due to poor adhesion and excess drift. We also removed data from Day 7 due ot poor cell health, as evidenced by extremely low cell speeds and low numbers of live cells.
 
 ```{r load data, warning = FALSE, message = FALSE, results = FALSE}
 # Set working directory containing pre-requisite scripts
@@ -69,21 +74,49 @@ Raw data files are loaded and organized in another script. Briefly, data headers
 #source("Scripts/2D_data_clean-up.R")
 
 # We're not analyzing the PBS conditions due to poor adhesion and excess drift. All experiments performed on day 7 are removed due to poor cell health. 
+data_clean <- wksp
 data_clean = subset(data_clean, data_clean$stimulus != "PBS")
 data_clean = subset(data_clean, data_clean$day != 7)
 data_clean$f.day <- as.factor(data_clean$day)
-
+```
+We aggregate the data according to the experimental day, slide, cell line, and stimulus, to make further visualization easier.
+```{r aggregate data, warning = FALSE, message = FALSE, results = FALSE}
 # re-aggregate the data without PBS and day 7
 agg <- data_clean
 
+#first part is the organizing data (day, stimulus, cell line, etc.)
+#second part is all the metrics
+#third part is the J column
 agg <- aggregate( cbind(track_length,cumul_distance,net_displacement,tortuosity, mean_velocity, mean_theta, mean_CI, num_pauses, pause_duration, confinement_radius, confined_vel, free_vel, super_vel, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
 
 agg <- cbind(agg[,1:4],agg[,5:17]/agg[,18])
 
 agg$trt <- apply(agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
 agg$trt <- as.factor(agg$trt)
-#agg = subset(agg, agg$stimulus != "PBS")
-#agg = subset(agg, agg$day != 7)
+```
+
+
+
+
+```{r test aggregate block}
+## CREATE AGGREGATE DATA
+# Aggregate takes all elements on the left side of the ~ and uses the given function on those values, while they are grouped by the values of the right side.
+
+#ANP-removed a reference to vFree because it didn't seem to be real numbers
+#m_agg <- aggregate( cbind(num_pauses, vFree, J) ~f.day + slide + cell_line + stimulus, data = m_agg, FUN=sum)
+m_agg <- motility_clean
+
+m_agg <- aggregate( cbind(num_pauses, J) ~f.day + slide + cell_line + stimulus, data = m_agg, FUN=sum)
+m_agg <- cbind(m_agg[1:4],m_agg[,5]/m_agg[,6])
+m_agg$trt <- apply(m_agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
+m_agg$trt <- as.factor(m_agg$trt)
+
+tPause_agg <- tPause_clean
+tPause_agg <- aggregate( cbind(pause_duration, J) ~f.day + slide + cell_line + stimulus, data = tPause_agg, FUN=sum)
+tPause_agg <- cbind(tPause_agg[1:4],tPause_agg[,5]/tPause_agg[,6])
+tPause_agg$trt <- apply(tPause_agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
+tPause_agg$trt <- as.factor(tPause_agg$trt)
+
 ```
 
 ### Define color palette and custom figure theme.
@@ -111,7 +144,6 @@ Numerous groups have reported motility defects in neutrophils isolated from pati
 ```{r mean_velocity, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
 
 # keep this template but I think I can shorten this whole document by just putting this template for plotting in another script and just running that
-library(ggbeeswarm)
 # Generate figure
 bee.plot <- ggplot(agg, aes(x = cell_line, y = mean_velocity)) +
   facet_wrap(~stimulus) +
@@ -226,10 +258,31 @@ bee.plot <- ggplot(agg, aes(x = cell_line, y = mean_CI)) +
 bee.plot
 ```
 
+```{r cumul_distance, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('svg','png')}
 
+bee.plot <- ggplot(agg, aes(x = cell_line, y = cumul_distance)) + 
+  facet_wrap(~stimulus) +
+  geom_boxplot(outlier.shape=NA,fill="#B3B3B3") +   
+  geom_beeswarm(cex=3,aes(colour = f.day)) + 
+  scale_colour_brewer(palette = "PiYG") +
+  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
+               geom="errorbar", color="black", width=0.5) + 
+  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
+  theme(legend.position="none")+
+  # Add labels
+  labs(
+    x = "",
+    y = "Mean track length",
+    title = "Figure 6",
+    subtitle = "Arpc1b KO cells travel shorter distances over time"
+  ) 
+bee.plot
+
+```
 
 ## Accounting for day-to-day variation in cell motility
-Cell-behavior and the population level can be difficult to quantify, and high-levels of variation across replicates can hinder statistical analysis. As shown in Figure 6, there is random variation in the population intercept (mean) by day. This variation can be explained by differences in environment (e.g. incubator temperature, humidity etc.). Though not shown here, other motility metrics such as distance traveled, directional index, accuracy etc. display similar variation by day. Note that the effect of Arpc1b KO (difference between control and KO means) on cell speed is consistent. For any given day, KO cells display a defect in speed. 
+Cell-behavior and the population level can be difficult to quantify, and high-levels of variation across replicates can hinder statistical analysis. As shown in Figure 7, there is random variation in the population intercept (mean) by day. This variation can be explained by differences in environment (e.g. incubator temperature, humidity etc.). Though not shown here, other motility metrics such as distance traveled, directional index, accuracy etc. display similar variation by day. Note that the effect of Arpc1b KO (difference between control and KO means) on cell speed is consistent. For any given day, KO cells display a defect in speed. 
 
 ```{r speed_scatter, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('png', 'svg')}
 # Generate figure
@@ -246,7 +299,7 @@ scatter.plot <- ggplot(data_clean, aes(x = cell_line, y = free_vel, colour = cel
   labs(
     x = "Experimental Day",
     y = "mean cell speed during free motility uM/second",
-    title = "Figure 6",
+    title = "Figure 7",
     subtitle = "Arpc1b KO cells are consistently slower than Control cells",
     fill = "cell line"
   ) + 
@@ -288,31 +341,32 @@ pairs( emmeans(mixed.speed, "cell_line"))
 
 
 ## Random effects make summary plots difficult to interpret
-Figure 3 contains a box plot representing the mean cell speed aggregated by cell line and stimulus. Here, the data from all days is combined. Although you can clearly see the consistent effect described above, the overlapping boxes might lead one to conclude that the effect is not significant. An alternative approach is to calculate the estimated effect size for each metric as well as confidence intervals and plot the result. 
+Figure 1 contains a box plot representing the mean cell speed aggregated by cell line and stimulus. Here, the data from all days is combined. Although you can clearly see the consistent effect described above, the overlapping boxes might lead one to conclude that the effect is not significant. An alternative approach is to calculate the estimated effect size for each metric as well as confidence intervals and plot the result. 
 
 ```{r speed_box,  echo = FALSE, fig.path='figures/', dev=c('png', 'svg')}
 
-data <- subset(data_clean, data_clean$stimulus != "PBS") # load data organized and cleaned in previous step
-
-speed_boxplot <- ggplot(data, aes(x = stimulus, y = cell_speed)) +
-  facet_wrap(~stimulus) + 
-  geom_boxplot(outlier.shape=NA, fill="#B3B3B3") +
-  geom_beeswarm(cex=3,aes(colour=f.day)) + 
+#data <- subset(data_clean, data_clean$stimulus != "PBS") # load data organized and cleaned in previous step
+# use data_clean for this step
+# Generate figure
+bee.plot <- ggplot(agg, aes(x = cell_line, y = mean_velocity)) +
+  facet_wrap(~stimulus) +
+  geom_boxplot(outlier.shape=NA, fill="#B3B3B3") + 
+  geom_beeswarm(cex=3, aes(colour=f.day)) +
+  scale_colour_brewer(palette = "PiYG") +
+  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
   stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
                geom="errorbar", color="black", width=0.5) + 
-  stat_compare_means(data=agg, comparisons = list(c("Control","Arpc1b")), method="t.test", paired=TRUE) +
+  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
   theme(legend.position="none")+
+  
   # Add labels
   labs(
-    x = "stimulus",
-    y = "mean cell speed in microns per second",
-    title = "Figure 7",
+    x = "",
+    y = "mean cell speed (uM/second)",
+    title = "Figure 1",
     subtitle = "Arpc1b KO cells are consistently slower than Control cells"
-  ) +
-  #scale_fill_manual(values = c("#f1a340", "#998ec3")) + # apply color-blind friendly color palette
-
-  #theme_Briana() # deploy custom theme 
-  speed_boxplot
+  ) 
+bee.plot
 
 ```
 
@@ -329,7 +383,7 @@ day = unique(data_clean$f.day)
 effect_speed = data.frame(day)
 
 # Aggregate data
-# During data organization, cell speed was summed. J was given a value of 1 for each cell and thus, represents the number of obervations that were summed.
+# During data organization, cell speed was summed. J was given a value of 1 for each cell and thus, represents the number of observations that were summed.
 # Here, we divide by J to get an average cell speed across all days. 
 ( tt <- with(wksp, tapply( I(cell_speed/J*60), list(stimulus, cell_line, f.day), mean, na.rm=TRUE))) 
 ( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
