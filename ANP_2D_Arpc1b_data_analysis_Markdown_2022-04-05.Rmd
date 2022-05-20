@@ -69,6 +69,8 @@ knitr::opts_knit$set(root.dir = 'C:/Users/axp701/Desktop/R code/2022.05.18')
 Raw data files are loaded and organized in another script. Briefly, data headers were edited for clarity, experimental day was converted to a factor, and speeds in excess of 2*SD were removed as they are not physiologically relevant and likely caused by drift. We also opted to remove conditions run with PBS as a chemoattractant source due to poor adhesion and excess drift. We also removed data from Day 7 due ot poor cell health, as evidenced by extremely low cell speeds and low numbers of live cells.
 
 ```{r load data, warning = FALSE, message = FALSE, results = FALSE}
+# Right now this is an optional block-I think the user can decide if they want to run the same cleanup script on all data sets and take out the aggregating section in the cleanup script, or they can aggregate here. 
+
 # Set working directory containing pre-requisite scripts
 
 #source("Scripts/2D_data_clean-up.R")
@@ -89,35 +91,13 @@ agg <- data_clean
 #third part is the J column
 agg <- aggregate( cbind(track_length,cumul_distance,net_displacement,tortuosity, mean_velocity, mean_theta, mean_CI, num_pauses, pause_duration, confinement_radius, confined_vel, free_vel, super_vel, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
 
-agg <- cbind(agg[,1:4],agg[,5:17]/agg[,18])
+#agg <- cbind(agg[,1:4],agg[,5:17]/agg[,18])
 
 agg$trt <- apply(agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
 agg$trt <- as.factor(agg$trt)
 ```
 
 
-
-
-```{r test aggregate block}
-## CREATE AGGREGATE DATA
-# Aggregate takes all elements on the left side of the ~ and uses the given function on those values, while they are grouped by the values of the right side.
-
-#ANP-removed a reference to vFree because it didn't seem to be real numbers
-#m_agg <- aggregate( cbind(num_pauses, vFree, J) ~f.day + slide + cell_line + stimulus, data = m_agg, FUN=sum)
-m_agg <- motility_clean
-
-m_agg <- aggregate( cbind(num_pauses, J) ~f.day + slide + cell_line + stimulus, data = m_agg, FUN=sum)
-m_agg <- cbind(m_agg[1:4],m_agg[,5]/m_agg[,6])
-m_agg$trt <- apply(m_agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
-m_agg$trt <- as.factor(m_agg$trt)
-
-tPause_agg <- tPause_clean
-tPause_agg <- aggregate( cbind(pause_duration, J) ~f.day + slide + cell_line + stimulus, data = tPause_agg, FUN=sum)
-tPause_agg <- cbind(tPause_agg[1:4],tPause_agg[,5]/tPause_agg[,6])
-tPause_agg$trt <- apply(tPause_agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
-tPause_agg$trt <- as.factor(tPause_agg$trt)
-
-```
 
 ### Define color palette and custom figure theme.
 *Color palette via [COLORBREWER 2.0](https://colorbrewer2.org/#type=sequential&scheme=BuGn&n=3)*
