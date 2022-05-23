@@ -59,6 +59,7 @@ library(purrr)
 library(tufte)
 library(ggpubr)
 library(ggbeeswarm)
+library(Rcpp)
 
 #knitr::opts_knit$set(root.dir = 'C:/Users/anpet/Desktop/2D_exp_full_data/movies/C5a movies/Arpc1b lines/2D/R code/2022-04-05/')
 knitr::opts_knit$set(root.dir = 'C:/Users/axp701/Desktop/R code/2022.05.18')
@@ -560,9 +561,87 @@ The superplot below (as well as those above) were based on the tutorial from Lor
 ## Number of Pauses
 ```{r number of pauses, message = FALSE, warning = FALSE, fig.path='figures/', dev=c('png', 'svg')}
 
+bee.plot <- ggplot(agg, aes(x = cell_line, y = num_pauses)) +
+  facet_wrap(~stimulus) +
+  geom_boxplot(outlier.shape=NA, fill="#B3B3B3") + 
+  geom_beeswarm(cex=3, aes(colour=f.day)) +
+  scale_colour_brewer(palette = "PiYG") +
+  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
+               geom="errorbar", color="black", width=0.5) + 
+  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
+  theme(legend.position="none") + 
+  
+  # Add labels
+  labs(
+    x = "",
+    y = "Number of pauses (norm. to track length)",
+    title = "Figure ##",
+    subtitle = "Arpc1b KO cells pause a greater number of times than control cells"
+  ) 
+
+wilcox.test(data_clean$num_pauses~data_clean$cell_line)
+
+bee.plot
+```
+## Pause Duration
+```{r pause duration, message = FALSE, warning = FALSE, fig.path='figures/', dev=c('png', 'svg')}
+bee.plot <- ggplot(agg, aes(x = cell_line, y = pause_duration)) +
+  facet_wrap(~stimulus) +
+  geom_boxplot(outlier.shape=NA, fill="#B3B3B3") + 
+  geom_beeswarm(cex=3, aes(colour=f.day)) +
+  scale_colour_brewer(palette = "PiYG") +
+  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
+               geom="errorbar", color="black", width=0.5) + 
+  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
+  
+  theme(legend.position="none") + 
+  
+  # Add labels
+  labs(
+    x = "",
+    y = "Pause duration (s)",
+    title = "Figure ##",
+    subtitle = "Arpc1b KO cells pause for longer periods of time than control cells"
+  ) 
+wilcox.test(data_clean$pause_duration~data_clean$cell_line)
+
+bee.plot
 
 ```
 
-## Pause Duration
+
 ```{r pause duration, message = FALSE, warning = FALSE, fig.path='figures/', dev=c('png', 'svg')}
+bee.plot <- ggplot(data_clean, aes(x = cell_line, y = pause_duration)) +
+  facet_wrap(~stimulus) +
+  geom_boxplot(outlier.shape=NA, fill="#B3B3B3") + 
+  geom_beeswarm(cex=3, aes(colour=f.day)) +
+  scale_colour_brewer(palette = "PiYG") +
+  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
+               geom="errorbar", color="black", width=0.5) + 
+  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
+  
+  theme(legend.position="none") + 
+  
+  # Add labels
+  labs(
+    x = "",
+    y = "Pause duration (s)",
+    title = "Figure ##",
+    subtitle = "Arpc1b KO cells pause for longer periods of time than control cells"
+  ) 
+
+#wilcox.test(agg$pause_duration~agg$cell_line)
+bee.plot
+
+wilcox.test(data_clean$pause_duration~data_clean$cell_line)
+```
+
+```{r, echo = TRUE}
+# Define mixed-effects model
+mixed.speed <- lmer( num_pauses ~ cell_line*stimulus + (1|f.day) + 
+                       (1|f.day:slide), data=agg, REML=T)
+tab_model(mixed.speed, show.re.var = TRUE, show.r2 = FALSE)
 ```

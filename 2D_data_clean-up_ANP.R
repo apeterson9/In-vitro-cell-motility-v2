@@ -5,8 +5,8 @@ library(knitr)
 library(tidyverse)
 
 ## READ IN DATA
-#DATA <- read_csv("C:/Users/anpet/Desktop/2D_exp_full_data/movies/C5a movies/Arpc1b lines/2D/Variables/2D LUT_formatted4R.csv")
-DATA <- read.csv("C:/Users/axp701/In-vitro-cell-motility-v2/2D LUT_formatted4R.csv")
+DATA <- read_csv("C:/Users/anpet/Desktop/2D_exp_full_data/movies/C5a movies/Arpc1b lines/2D/Variables/2D LUT_formatted4R.csv")
+#DATA <- read.csv("C:/Users/axp701/In-vitro-cell-motility-v2/2D LUT_formatted4R.csv")
 
 #data_results <- list.files(path = "data", full.names = T) 
 #DATA <- read.csv(data_results)
@@ -26,6 +26,9 @@ wksp <- subset(wksp, wksp$stimulus != "PBS")
 # factor data by stimulus
 wksp$f.stim <- factor(wksp$stimulus, levels=c("PBS","fMLF_1uM","Low_3uM_C5a","High_30uM_C5a"),labels=c("PBS","fMLF 1uM","C5a 3uM","C5a 30uM"))
 
+# ANP-keep the naming convention that f.day means the day column factored by day
+wksp$f.day <- as.factor(wksp$day)
+
 # create new data structure with na values excluded
 wksp <- wksp[!is.na(wksp$track_length), ]
 wksp <- wksp[!is.na(wksp$cumul_distance), ]
@@ -37,8 +40,7 @@ wksp <- wksp[!is.na(wksp$mean_CI), ]
 wksp <- wksp[!is.na(wksp$num_pauses), ]
 wksp <- wksp[!is.na(wksp$pause_duration), ]
 
-# ANP-keep the naming convention that f.day means the day column factored by day
-wksp$f.day <- as.factor(wksp$day)
+
 
 # Creating additional value, J and then aggregating data by summing over speed and J. Later, we will use the
 # value of summed J to divide for calculating mean speed
@@ -110,6 +112,6 @@ rm(data_speed_sum)
 agg <- data_clean
 
 agg <- aggregate( cbind(track_length,cumul_distance,net_displacement,tortuosity, mean_velocity, mean_theta, mean_CI, num_pauses, pause_duration, confinement_radius, confined_vel, free_vel, super_vel, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
+
 agg$trt <- apply(agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
 agg$trt <- as.factor(agg$trt)
-
