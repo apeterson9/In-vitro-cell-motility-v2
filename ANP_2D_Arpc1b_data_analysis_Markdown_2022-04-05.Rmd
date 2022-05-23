@@ -70,7 +70,6 @@ knitr::opts_knit$set(root.dir = 'C:/Users/axp701/Desktop/R code/2022.05.18')
 Raw data files are loaded and organized in another script. Briefly, data headers were edited for clarity, experimental day was converted to a factor, and speeds in excess of 2*SD were removed as they are not physiologically relevant and likely caused by drift. We also opted to remove conditions run with PBS as a chemoattractant source due to poor adhesion and excess drift. We also removed data from Day 7 due ot poor cell health, as evidenced by extremely low cell speeds and low numbers of live cells.
 
 ```{r load data, warning = FALSE, message = FALSE, results = FALSE}
-# Right now this is an optional block-I think the user can decide if they want to run the same cleanup script on all data sets and take out the aggregating section in the cleanup script, or they can aggregate here. 
 
 # Set working directory containing pre-requisite scripts
 
@@ -561,67 +560,52 @@ The superplot below (as well as those above) were based on the tutorial from Lor
 ## Number of Pauses
 ```{r number of pauses, message = FALSE, warning = FALSE, fig.path='figures/', dev=c('png', 'svg')}
 
-bee.plot <- ggplot(agg, aes(x = cell_line, y = num_pauses)) +
+num_pauses_rep_averages <- data_clean %>% group_by(f.stim, f.day) %>% summarise_each(list(mean))
+bee.plot <- ggplot(data_clean, aes(x = cell_line, y = num_pauses)) +
   facet_wrap(~stimulus) +
   geom_boxplot(outlier.shape=NA, fill="#B3B3B3") + 
   geom_beeswarm(cex=3, aes(colour=f.day)) +
+  geom_beeswarm(data=pause_duration_rep_averages, size=8) +
   scale_colour_brewer(palette = "PiYG") +
   stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
   stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
                geom="errorbar", color="black", width=0.5) + 
-  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
+  
   theme(legend.position="none") + 
   
   # Add labels
   labs(
     x = "",
-    y = "Number of pauses (norm. to track length)",
+    y = "Pause duration (s)",
     title = "Figure ##",
-    subtitle = "Arpc1b KO cells pause a greater number of times than control cells"
+    subtitle = "Arpc1b KO cells pause for longer periods of time than control cells"
   ) 
-
-wilcox.test(data_clean$num_pauses~data_clean$cell_line)
 
 bee.plot
 ```
 ## Pause Duration
-```{r pause duration, message = FALSE, warning = FALSE, fig.path='figures/', dev=c('png', 'svg')}
-bee.plot <- ggplot(agg, aes(x = cell_line, y = pause_duration)) +
-  facet_wrap(~stimulus) +
-  geom_boxplot(outlier.shape=NA, fill="#B3B3B3") + 
-  geom_beeswarm(cex=3, aes(colour=f.day)) +
-  scale_colour_brewer(palette = "PiYG") +
-  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
-  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
-               geom="errorbar", color="black", width=0.5) + 
-  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
-  
-  theme(legend.position="none") + 
-  
-  # Add labels
-  labs(
-    x = "",
-    y = "Pause duration (s)",
-    title = "Figure ##",
-    subtitle = "Arpc1b KO cells pause for longer periods of time than control cells"
-  ) 
-wilcox.test(data_clean$pause_duration~data_clean$cell_line)
+```{r plot pause duration, message = FALSE, warning = FALSE, fig.path='figures/', dev=c('png', 'svg')}
+data_clean_sub <- data_clean[1:10000,]
 
-bee.plot
+# copied straight from the biorxiv paper
+ReplicateAverages <- combined %>% group_by(Treatment, Replicate) %>% summarise_each(list(mean))
+ggplot(combined, aes(x=Treatment,y=Speed,color=factor(Replicate))) +
+geom_beeswarm(cex=3) + scale_colour_brewer(palette = "Set1") + geom_beeswarm(data=ReplicateAverages, size=8) + stat_compare_means(data=ReplicateAverages,
+comparisons = list(c("Control", "Drug")), method="t.test", paired=TRUE) + theme(legend.position="none").
 
-```
-
-
-```{r pause duration, message = FALSE, warning = FALSE, fig.path='figures/', dev=c('png', 'svg')}
+tt <- with(agg,tapply(I(pause_duration/J),list(stimulus,cell_line,f.day),mean))
+pause_duration_rep_averages <- data_clean %>% group_by(f.stim, f.day, f.cell_line) %>% summarise_each(list(mean))
 bee.plot <- ggplot(data_clean, aes(x = cell_line, y = pause_duration)) +
   facet_wrap(~stimulus) +
-  geom_boxplot(outlier.shape=NA, fill="#B3B3B3") + 
-  geom_beeswarm(cex=3, aes(colour=f.day)) +
+  #geom_beeswarm(cex=3, aes(colour=f.day)) +
+  geom_boxplot(outlier.shape=NA) +
+  geom_jitter(cex=3, aes(colour=f.day)) +
+  geom_beeswarm(data=agg, size=4, aes(x = cell_line, y = mean_velocity, colour=f.day)) +
+  #geom_beeswarm(data=pause_duration_rep_averages, size=8) +
   scale_colour_brewer(palette = "PiYG") +
-  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
+  #stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") + #this makes the asterisk for the mean
   stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
                geom="errorbar", color="black", width=0.5) + 
-  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
   
   theme(legend.position="none") + 
   
@@ -633,15 +617,30 @@ bee.plot <- ggplot(data_clean, aes(x = cell_line, y = pause_duration)) +
     subtitle = "Arpc1b KO cells pause for longer periods of time than control cells"
   ) 
 
-#wilcox.test(agg$pause_duration~agg$cell_line)
 bee.plot
 
-wilcox.test(data_clean$pause_duration~data_clean$cell_line)
 ```
 
-```{r, echo = TRUE}
+
+```{r bee plot practice}
+bee.plot <- ggplot(data_clean[data_clean$stimulus== "fMLF_1uM", ], aes(x = cell_line, y = pause_duration)) +
+  geom_boxplot()+
+  geom_jitter()
+  
+```
+#Use liner mixed effects model with the pausing phenotype
+```{r lmer num_pauses, echo = TRUE}
 # Define mixed-effects model
-mixed.speed <- lmer( num_pauses ~ cell_line*stimulus + (1|f.day) + 
+mixed.num_pauses <- lmer( num_pauses ~ cell_line*stimulus + (1|f.day) + 
                        (1|f.day:slide), data=agg, REML=T)
-tab_model(mixed.speed, show.re.var = TRUE, show.r2 = FALSE)
+tab_model(mixed.num_pauses, show.re.var = TRUE, show.r2 = FALSE)
+```
+
+
+
+```{r lmer pause_duration, echo = TRUE}
+# Define mixed-effects model
+mixed.pause_duration <- lmer( pause_duration ~ cell_line*stimulus + (1|f.day) + 
+                       (1|f.day:slide), data=agg, REML=T)
+tab_model(mixed.pause_duration, show.re.var = TRUE, show.r2 = FALSE)
 ```
