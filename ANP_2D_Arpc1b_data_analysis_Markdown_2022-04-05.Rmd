@@ -358,43 +358,43 @@ The mean speed for the control cells was subracted from the mean cell speed for 
 
 ```{r effect_speed, include = FALSE}
 # Load data, build data frame with effects for each metric
-wksp <- data
+#wksp <- data
 day = unique(data_clean$f.day)
 effect_speed = data.frame(day)
 
 # Aggregate data
 # During data organization, cell speed was summed. J was given a value of 1 for each cell and thus, represents the number of observations that were summed.
 # Here, we divide by J to get an average cell speed across all days. 
-( tt <- with(wksp, tapply( I(cell_speed/J*60), list(stimulus, cell_line, f.day), mean, na.rm=TRUE))) 
+( tt <- with(wksp, tapply( I(mean_velocity/J*60), list(stimulus, cell_line, f.day), mean, na.rm=TRUE))) 
 ( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
 tt <- tt[!is.na(tt[,1]), ]
 # Form differences between control and KO for each day.
 effect_speed <- data.frame(value = tt[,2] - tt[,1]) %>%
-  mutate(metric = "mean cell speed") 
+  mutate(metric = "Mean Cell Speed") 
 
 # Get confidence intervals for effect
 cis <- t.test((tt[,2] - tt[,1])/tt[,1])
-cis_df <- data.frame(cbind(metric = "mean cell speed", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
+cis_df <- data.frame(cbind(metric = "Mean Cell Speed", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
 
 ```
 
 ## Testing the effects of Arpc1b KO on remaining motility metrics
 The process carried out for cell speed was repeated for the remaining metrics: directionality index, cumulative distance traveled, net distance gained toward source, directional accuracy and confinement radius. The code is omitted for brevity, but a summary output for each motility metric is included.
 
-## Directionality Index
+## Track Length
 
-```{r DI, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
-mod_out <- lmer( directionality_index ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
+```{r Track Length, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+mod_out <- lmer( track_length ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
             data=agg, REML=T)
  
-( tt <- with(wksp, tapply( directionality_index, list(stimulus, cell_line, f.day), mean, na.rm=TRUE))) 
+( tt <- with(wksp, tapply( track_length, list(stimulus, cell_line, f.day), mean, na.rm=TRUE))) 
 ( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
 tt <- tt[!is.na(tt[,1]), ]
 
-effect_di <- data.frame(value = tt[,2] - tt[,1]) %>%
-  mutate(metric = "Directionality Index") 
+effect_track_length <- data.frame(value = tt[,2] - tt[,1]) %>%
+  mutate(metric = "Track Length") 
 cis <- t.test((tt[,2] - tt[,1])/tt[,1])
-temp <- data.frame(cbind(metric = "directionality_index", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
+temp <- data.frame(cbind(metric = "Track Length", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
 cis_df <- rbind(cis_df, temp)
 
 ```
@@ -409,17 +409,17 @@ pairs( emmeans(mod_out, "cell_line") )
 
 ## Cumulative Distance
 
-```{r distance, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
-mod_out <- lmer( cumulative_distance ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
+```{r effect_distance, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+mod_out <- lmer( cumul_distance ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
             data=agg, REML=T)
 effect_sspeed = data.frame(day)
-( tt <- with(wksp, tapply( cumulative_distance, list(stimulus, cell_line, f.day), mean, na.rm=TRUE ))) 
+( tt <- with(wksp, tapply( cumul_distance, list(stimulus, cell_line, f.day), mean, na.rm=TRUE ))) 
 ( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
 tt <- tt[!is.na(tt[,1]), ]
-effect_distance <- data.frame(value = tt[,2] - tt[,1])%>%
-  mutate(metric = "cumulative_distance") 
+effect_cumul_distance <- data.frame(value = tt[,2] - tt[,1])%>%
+  mutate(metric = "Cumulative Distance") 
 cis <- t.test((tt[,2] - tt[,1])/tt[,1])
-temp <- data.frame(cbind(metric = "cumulative_distance", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
+temp <- data.frame(cbind(metric = "Cumulative Distance", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
 cis_df <- rbind(cis_df, temp)
 ```
 
@@ -430,22 +430,22 @@ emmeans(mod_out, "cell_line") # 0.0990 for control; 0.0829 for KO
 pairs( emmeans(mod_out, "cell_line") ) 
 ```
 
-## Net distance gained toward source
+## Net displacement
 
-```{r net gain, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
-mod_out <- lmer( net_gain ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
+```{r net displacement, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+mod_out <- lmer( net_displacement ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
             data=agg, REML=T)
 
-( tt <- with(wksp, tapply( net_gain, list(stimulus, cell_line, f.day), mean ))) 
+( tt <- with(wksp, tapply( net_displacement, list(stimulus, cell_line, f.day), mean ))) 
 ( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
 
 tt <- tt[!is.na(tt[,1]), ]
 
-effect_gain <- data.frame(value = tt[,2] - tt[,1]) %>%
-  mutate(metric = "net_gaim")
+effect_displace <- data.frame(value = tt[,2] - tt[,1]) %>%
+  mutate(metric = "Net Displacement")
 
 cis <- t.test((tt[,2] - tt[,1])/tt[,1])
-temp <- data.frame(cbind(metric = "net_gain", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
+temp <- data.frame(cbind(metric = "Net Displacement", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
 cis_df <- rbind(cis_df, temp)
 ```
 
@@ -455,21 +455,21 @@ drop1(mod_out, ddf="Kenward-Roger")
 emmeans(mod_out, "cell_line") 
 pairs( emmeans(mod_out, "cell_line") ) 
 ```
-## Directional Accuracy
+## Tortuosity
 
-```{r dc, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
-mod_out <- lmer( diff_coeff ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
+```{r effect_tortuosity, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+mod_out <- lmer( tortuosity ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
             data=agg, REML=T)
  
-( tt <- with(wksp, tapply( diff_coeff, list(stimulus, cell_line, f.day), mean ))) 
+( tt <- with(wksp, tapply( tortuosity, list(stimulus, cell_line, f.day), mean ))) 
 ( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
 tt <- tt[!is.na(tt[,1]), ]
 
-effect_accuracy <- data.frame(value = tt[,2] - tt[,1]) %>%
-  mutate(metric = "diff_coeff")
+effect_tortuosity <- data.frame(value = tt[,2] - tt[,1]) %>%
+  mutate(metric = "Tortuosity")
 
 cis <- t.test((tt[,2] - tt[,1])/tt[,1])
-temp <- data.frame(cbind(metric = "diff_coeff", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
+temp <- data.frame(cbind(metric = "Tortuosity", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
 cis_df <- rbind(cis_df, temp)
 ```
 
@@ -480,32 +480,76 @@ emmeans(mod_out, "cell_line")
 pairs( emmeans(mod_out, "cell_line") ) 
 ```
 
+## Chemotactic index
+
+```{r effect_chemotactic_index, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+mod_out <- lmer( mean_CI ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
+            data=agg, REML=T)
+ 
+( tt <- with(wksp, tapply( mean_CI , list(stimulus, cell_line, f.day), mean, na.rm = TRUE ))) 
+( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
+tt <- tt[!is.na(tt[,1]), ]
+
+effect_ci <- data.frame(value = tt[,2] - tt[,1]) %>%
+  mutate(metric = "Chemotactic Index ") 
+
+cis <- t.test((tt[,2] - tt[,1])/tt[,1])
+temp <- data.frame(cbind(metric = "Chemotactic Index ", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
+cis_df <- rbind(cis_df, temp)
+```
+
+```{r, echo = FALSE, results = TRUE}
+drop1(mod_out, ddf="Kenward-Roger")
+
+emmeans(mod_out, "cell_line") 
+pairs( emmeans(mod_out, "cell_line") ) 
+```
 ## Confinement radius
 
-```{r confinement radius, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+```{r effect_confinement radius, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
 mod_out <- lmer( confinement_radius ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
             data=agg, REML=T)
  
-( tt <- with(wksp, tapply( confinement_radius , list(stimulus, cell_line, f.day), mean, na.rm = TRUE ))) 
+( tt <- with(wksp, tapply( mean_CI , list(stimulus, cell_line, f.day), mean, na.rm = TRUE ))) 
 ( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
 tt <- tt[!is.na(tt[,1]), ]
 
 effect_cr <- data.frame(value = tt[,2] - tt[,1]) %>%
-  mutate(metric = "confinement_radius ") 
+  mutate(metric = "Confinement Radius") 
 
 cis <- t.test((tt[,2] - tt[,1])/tt[,1])
-temp <- data.frame(cbind(metric = "confinement_radius ", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
+temp <- data.frame(cbind(metric = "Confinement Radius", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
 cis_df <- rbind(cis_df, temp)
 ```
-
 ```{r, echo = FALSE, results = TRUE}
 drop1(mod_out, ddf="Kenward-Roger")
 
 emmeans(mod_out, "cell_line") 
 pairs( emmeans(mod_out, "cell_line") ) 
 ```
+## Mean theta
 
+```{r effect_mean_theta, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+mod_out <- lmer( mean_theta ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
+            data=agg, REML=T)
+ 
+( tt <- with(wksp, tapply( mean_theta , list(stimulus, cell_line, f.day), mean, na.rm = TRUE ))) 
+( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
+tt <- tt[!is.na(tt[,1]), ]
 
+effect_mean_theta <- data.frame(value = tt[,2] - tt[,1]) %>%
+  mutate(metric = "Mean Theta") 
+
+cis <- t.test((tt[,2] - tt[,1])/tt[,1])
+temp <- data.frame(cbind(metric = "Mean Theta", estimate = cis$estimate, Lower = cis$conf.int[1], Upper = cis$conf.int[2]))
+cis_df <- rbind(cis_df, temp)
+```
+```{r, echo = FALSE, results = TRUE}
+drop1(mod_out, ddf="Kenward-Roger")
+
+emmeans(mod_out, "cell_line") 
+pairs( emmeans(mod_out, "cell_line") ) 
+```
 ## Graphical representations of the effects of Arpc1b KO on various cell motility metrics
 From here, I aggregated the effect sizes calculated above into a convenient data structure for plotting the effect size by metric. The default value is Arpc1b KO (The control value was subtracted from the KO value). Since Arpc1b KO causes defects, setting it as the default results in more intuitive graphs where the effect is represented as a negative number. To ensure comparable axis, data was normalized by dividing by the control value. Thus, the effect size can be interpreted as a percent. The line segments represent the span between the upper and lower confidence intervals. An effect size that crosses 0 is interpreted as having no significant effect. Figure 4 indicates that Arpc1b KO results in significant defects in speed, that cells are more confined and less directional (that is, they meander more). 
 
@@ -521,6 +565,8 @@ cis_df$Lower <- as.numeric(cis_df$Lower)
 effect_tab = cbind(cis_df$metric, cis_df$estimate, cis_df$Lower, cis_df$Upper) 
   
 knitr::kable(effect_tab, col.names = c('Metric','Estimated Effect','Lower CI','Upper CI'))
+
+
 
 # Initialize plot
 effect_plot <- ggplot(cis_df, aes(x = 1, y = I(estimate))) +
@@ -565,9 +611,9 @@ bee.plot <- ggplot(data_clean, aes(x = cell_line, y = num_pauses)) +
   facet_wrap(~stimulus) +
   geom_boxplot(outlier.shape=NA, fill="#B3B3B3") + 
   geom_beeswarm(cex=3, aes(colour=f.day)) +
-  geom_beeswarm(data=pause_duration_rep_averages, size=8) +
+  geom_beeswarm(data=num_pauses_rep_averages, size=8) +
   scale_colour_brewer(palette = "PiYG") +
-  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
+  #stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
   stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
                geom="errorbar", color="black", width=0.5) + 
   
@@ -593,15 +639,17 @@ ggplot(combined, aes(x=Treatment,y=Speed,color=factor(Replicate))) +
 geom_beeswarm(cex=3) + scale_colour_brewer(palette = "Set1") + geom_beeswarm(data=ReplicateAverages, size=8) + stat_compare_means(data=ReplicateAverages,
 comparisons = list(c("Control", "Drug")), method="t.test", paired=TRUE) + theme(legend.position="none").
 
+
+
 tt <- with(agg,tapply(I(pause_duration/J),list(stimulus,cell_line,f.day),mean))
 pause_duration_rep_averages <- data_clean %>% group_by(f.stim, f.day, f.cell_line) %>% summarise_each(list(mean))
 bee.plot <- ggplot(data_clean, aes(x = cell_line, y = pause_duration)) +
   facet_wrap(~stimulus) +
   #geom_beeswarm(cex=3, aes(colour=f.day)) +
   geom_boxplot(outlier.shape=NA) +
-  geom_jitter(cex=3, aes(colour=f.day)) +
-  geom_beeswarm(data=agg, size=4, aes(x = cell_line, y = mean_velocity, colour=f.day)) +
-  #geom_beeswarm(data=pause_duration_rep_averages, size=8) +
+  geom_jitter(cex=3, size=0.5, aes(colour=f.day)) +
+  geom_beeswarm(data=agg, size=2, aes(x = cell_line, y = pause_duration, colour=f.day)) +
+  geom_beeswarm(data=pause_duration_rep_averages, size=8) +
   scale_colour_brewer(palette = "PiYG") +
   #stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") + #this makes the asterisk for the mean
   stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),

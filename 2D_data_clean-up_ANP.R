@@ -5,8 +5,8 @@ library(knitr)
 library(tidyverse)
 
 ## READ IN DATA
-#DATA <- read_csv("C:/Users/anpet/Desktop/2D_exp_full_data/movies/C5a movies/Arpc1b lines/2D/Variables/2D LUT_formatted4R.csv")
-DATA <- read.csv("C:/Users/axp701/In-vitro-cell-motility-v2/2D LUT_formatted4R.csv")
+DATA <- read_csv("C:/Users/anpet/Desktop/2D_exp_full_data/movies/C5a movies/Arpc1b lines/2D/Variables/2D LUT_formatted4R.csv")
+#DATA <- read.csv("C:/Users/axp701/In-vitro-cell-motility-v2/2D LUT_formatted4R.csv")
 
 #data_results <- list.files(path = "data", full.names = T) 
 #DATA <- read.csv(data_results)
@@ -21,10 +21,11 @@ wksp <- DATA
 wksp$f.cell_line <- factor(wksp$cell_line, levels=a, labels=c("Control", "Arpc1b")) 
 rm(a)
 
+wksp <- subset(wksp, wksp$stimulus != "PBS")
+wksp = subset(wksp, wksp$day != 7)
 # ANP-keep the naming convention that f.day means the day column factored by day
 wksp$f.day <- as.factor(wksp$day)
 
-wksp <- subset(wksp, wksp$stimulus != "PBS")
 # factor data by stimulus
 wksp$f.stim <- factor(wksp$stimulus, levels=c("PBS","fMLF_1uM","Low_3uM_C5a","High_30uM_C5a"),labels=c("PBS","fMLF 1uM","C5a 3uM","C5a 30uM"))
 
