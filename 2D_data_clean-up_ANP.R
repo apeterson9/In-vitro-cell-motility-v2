@@ -5,8 +5,8 @@ library(knitr)
 library(tidyverse)
 
 ## READ IN DATA
-DATA <- read_csv("C:/Users/anpet/Desktop/2D_exp_full_data/movies/C5a movies/Arpc1b lines/2D/Variables/2D LUT_formatted4R.csv")
-#DATA <- read.csv("C:/Users/axp701/In-vitro-cell-motility-v2/2D LUT_formatted4R.csv")
+#DATA <- read_csv("C:/Users/anpet/Desktop/2D_exp_full_data/movies/C5a movies/Arpc1b lines/2D/Variables/2D LUT_formatted4R.csv")
+DATA <- read.csv("C:/Users/axp701/In-vitro-cell-motility-v2/Miscellaneous files/2D LUT_formatted4R.csv")
 
 #data_results <- list.files(path = "data", full.names = T) 
 #DATA <- read.csv(data_results)

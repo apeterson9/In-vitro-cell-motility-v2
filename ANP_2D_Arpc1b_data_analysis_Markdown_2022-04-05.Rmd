@@ -607,6 +607,7 @@ The superplot below (as well as those above) were based on the tutorial from Lor
 ```{r number of pauses, message = FALSE, warning = FALSE, fig.path='figures/', dev=c('png', 'svg')}
 
 num_pauses_rep_averages <- data_clean %>% group_by(f.stim, f.day) %>% summarise_each(list(mean))
+
 bee.plot <- ggplot(data_clean, aes(x = cell_line, y = num_pauses)) +
   facet_wrap(~stimulus) +
   geom_boxplot(outlier.shape=NA, fill="#B3B3B3") + 
