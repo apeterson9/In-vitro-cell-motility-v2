@@ -13,7 +13,7 @@ output:
 ## Summary
 The purpose of this document is to summarize the statistical analysis of the effects of Arpc1b KO on the motility patterns of PLB985 cells responding to stimuli *in vitro*. Imaris cell-tracking software was used to track individual cells and compute cell-speed. The output files from Imaris were transferred into MATLAB for processing and computation of additional motility metrics including: 
 
-* __Chemotactic Index__: Calculated using methods described by Kim and Hayne (2013). $CI = \frac{x}{d_{TOT}}$; where $x$ is the final displacedment along the direction of the gradient, and $d_{TOT}$ is the total migration distance. 
+* __Chemotactic Index__: Calculated using methods described by Kim and Hayne (2013). $CI = \frac{x}{d_{TOT}}$; where $x$ is the final displacement along the direction of the gradient, and $d_{TOT}$ is the total migration distance. 
 
 * __Total Migration Distance__: Calculated for each track; $d_{TOT} = \sum_{1}^{n}P_{f}-P_{i}$; where $n$ = number of frames, $P_f$ = final position, and $P_i$ = starting position.
 
@@ -603,6 +603,67 @@ Next, we wanted to determine whether the decrease in mean cell speed associated 
 
 The superplot below (as well as those above) were based on the tutorial from Lord et al. (*[JCB, 2020](https://rupress.org/jcb/article/219/6/e202001064/151717/SuperPlots-Communicating-reproducibility-and)*).
 
+
+## TEST OUT NUMBER OF PAUSES USING THE LAYOUT OF THE DAY TO DAY VARIABILITY PLOT-use this for supplement
+```{r num_pauses scatter supplemental figure, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('png', 'svg')}
+# Generate figure
+scatter.plot <- ggplot(data_clean, aes(x = cell_line, y = num_pauses, colour = cell_line)) +
+  geom_jitter(alpha = 0.3) +
+  scale_colour_manual(values = c("#c51b7d","#4d9221")) +
+  #scale_colour_manual(values = c("#f1a340", "#998ec3")) +
+  facet_grid(~f.day) +
+  
+  stat_summary(fun.y = "mean", shape = 8, geom = "point", size = 3, color = "black") +
+  
+
+  # Add labels
+  labs(
+    x = "Experimental Day",
+    y = "Number of pauses",
+    title = "Figure ##",
+    subtitle = "Arpc1b KO cells pause more often than control cells",
+    fill = "cell line"
+  ) + 
+  theme_Briana() +
+  theme(
+    axis.text.x = element_blank()
+  ) 
+
+#scatter.plot <- scatter.plot + guides(fill=guide_legend(title="cell line")) 
+scatter.plot
+```
+
+## GENERATE A SCATTER PLOT WITH THEME OF THE BOXPLOT GRAPHS, BUT AS SCATTER
+```{r num_pauses scatter supplemental figure, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('png', 'svg')}
+# Generate figure
+scatter.plot <- ggplot(data_clean, aes(x = cell_line, y = num_pauses, colour = cell_line)) +
+  geom_jitter(alpha = 0.3) +
+  scale_colour_manual(values = c("#c51b7d","#4d9221")) +
+  #scale_colour_manual(values = c("#f1a340", "#998ec3")) +
+  facet_wrap(~stimulus) +
+  
+  stat_summary(fun.y = "mean", shape = 8, geom = "point", size = 3, color = "black") +
+  
+
+  # Add labels
+  labs(
+    x = "Experimental Day",
+    y = "Number of pauses (norm. to track length)",
+    title = "Figure ##",
+    subtitle = "Arpc1b KO cells pause more often than control cells",
+    fill = "cell line"
+  ) + 
+  theme_Briana() +
+  theme(
+    axis.text.x = element_blank()
+  ) 
+
+#scatter.plot <- scatter.plot + guides(fill=guide_legend(title="cell line")) 
+scatter.plot
+```
+
+
+
 ## Number of Pauses
 ```{r number of pauses, message = FALSE, warning = FALSE, fig.path='figures/', dev=c('png', 'svg')}
 
@@ -630,6 +691,80 @@ bee.plot <- ggplot(data_clean, aes(x = cell_line, y = num_pauses)) +
 
 bee.plot
 ```
+
+Due to the nature of the metric, pause duration is especially susceptible to skew by outliers. Here we perform additional filtering of outliers of pause duration based on 2 standard deviations away from the mean for the entire data set. 
+```{r pause_duration filter outliers, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('png', 'svg')}
+# this section seems to filter out 559 data points (cells) just based on pausing duration
+data_pause_dur_sum = data_clean %>%
+  group_by(cell_line, f.day, stimulus) %>%
+  summarise(duration_mean = mean(pause_duration),
+            duration_sd = sd(pause_duration)) %>%
+  ungroup() %>%
+  mutate(pause_dur_high = duration_mean + (2 * duration_sd)) 
+
+data_clean_pausing = data_clean %>%
+  inner_join(data_pause_dur_sum) %>%
+  filter(pause_duration < pause_dur_high) 
+rm(data_pause_dur_sum)
+```
+## TESTING OUT THESE SCATTER PLOTS, NOW FOR PAUSE DURATION
+```{r pause_duration scatter supplemental figure, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('png', 'svg')}
+# Generate figure
+scatter.plot <- ggplot(data_clean_pausing, aes(x = cell_line, y = pause_duration, colour = cell_line)) +
+  geom_jitter(alpha = 0.3) +
+  scale_colour_manual(values = c("#c51b7d","#4d9221")) +
+  #scale_colour_manual(values = c("#f1a340", "#998ec3")) +
+  facet_grid(~f.day) +
+  
+  stat_summary(fun.y = "mean", shape = 8, geom = "point", size = 3, color = "black") +
+  
+
+  # Add labels
+  labs(
+    x = "Experimental Day",
+    y = "Pause Duration",
+    title = "Figure ##",
+    subtitle = "Arpc1b KO cells pause for longer periods of time than control cells",
+    fill = "cell line"
+  ) + 
+  theme_Briana() +
+  theme(
+    axis.text.x = element_blank()
+  ) 
+
+#scatter.plot <- scatter.plot + guides(fill=guide_legend(title="cell line")) 
+scatter.plot
+```
+
+## GENERATE A SCATTER PLOT WITH THEME OF THE BOXPLOT GRAPHS, BUT AS SCATTER
+```{r pause_duration scatter supplemental figure, echo = FALSE, warning = FALSE,  fig.path='figures/', dev=c('png', 'svg')}
+# Generate figure
+scatter.plot <- ggplot(data_clean_pausing, aes(x = cell_line, y = pause_duration, colour = cell_line)) +
+  geom_jitter(alpha = 0.3) +
+  scale_colour_manual(values = c("#c51b7d","#4d9221")) +
+  #scale_colour_manual(values = c("#f1a340", "#998ec3")) +
+  facet_wrap(~stimulus) +
+  
+  stat_summary(fun.y = "mean", shape = 8, geom = "point", size = 3, color = "black") +
+  
+
+  # Add labels
+  labs(
+    x = "Experimental Day",
+    y = "Number of pauses (norm. to track length)",
+    title = "Figure ##",
+    subtitle = "Arpc1b KO cells pause more often than control cells",
+    fill = "cell line"
+  ) + 
+  theme_Briana() +
+  theme(
+    axis.text.x = element_blank()
+  ) 
+
+#scatter.plot <- scatter.plot + guides(fill=guide_legend(title="cell line")) 
+scatter.plot
+```
+
 ## Pause Duration
 ```{r plot pause duration, message = FALSE, warning = FALSE, fig.path='figures/', dev=c('png', 'svg')}
 data_clean_sub <- data_clean[1:10000,]
@@ -685,11 +820,101 @@ mixed.num_pauses <- lmer( num_pauses ~ cell_line*stimulus + (1|f.day) +
 tab_model(mixed.num_pauses, show.re.var = TRUE, show.r2 = FALSE)
 ```
 
-
-
 ```{r lmer pause_duration, echo = TRUE}
 # Define mixed-effects model
 mixed.pause_duration <- lmer( pause_duration ~ cell_line*stimulus + (1|f.day) + 
                        (1|f.day:slide), data=agg, REML=T)
 tab_model(mixed.pause_duration, show.re.var = TRUE, show.r2 = FALSE)
+```
+
+##Calculate effect size for the pausing phenotype
+```{r effect_num_pauses, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+
+mod_out <- lmer( num_pauses ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
+            data=agg, REML=T)
+ 
+( tt <- with(wksp, tapply( num_pauses , list(stimulus, cell_line, f.day), mean, na.rm = TRUE ))) 
+( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
+tt <- tt[!is.na(tt[,1]), ]
+
+effect_num_pauses <- data.frame(value = tt[,2] - tt[,1]) %>%
+  mutate(metric = "Number of Pauses") 
+
+cis_pause <- t.test((tt[,2] - tt[,1])/tt[,1])
+cis_pause_df <- data.frame(cbind(metric = "Number of Pauses", estimate = cis_pause$estimate, Lower = cis_pause$conf.int[1], Upper = cis_pause$conf.int[2]))
+
+```
+
+```{r, echo = FALSE, results = TRUE}
+drop1(mod_out, ddf="Kenward-Roger")
+
+emmeans(mod_out, "cell_line") 
+pairs( emmeans(mod_out, "cell_line") ) 
+```
+
+```{r effect_pause_duration, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+mod_out <- lmer( pause_duration ~ cell_line*stimulus + (1|f.day) + (1|f.day:slide) + (1 |f.day:trt), 
+            data=agg, REML=T)
+ 
+( tt <- with(wksp, tapply( pause_duration , list(stimulus, cell_line, f.day), mean, na.rm = TRUE ))) 
+( tt <- apply(tt, MARGIN=c(3,2), mean, na.rm=TRUE)) # average across stimuli to get one mean speed per experimental day
+tt <- tt[!is.na(tt[,1]), ]
+
+effect_pause_duration <- data.frame(value = tt[,2] - tt[,1]) %>%
+  mutate(metric = "Pause Duration") 
+
+cis_pause <- t.test((tt[,2] - tt[,1])/tt[,1])
+temp <- data.frame(cbind(metric = "Pause Duration", estimate = cis_pause$estimate, Lower = cis_pause$conf.int[1], Upper = cis_pause$conf.int[2]))
+cis_pause_df <- rbind(cis_pause_df, temp)
+```
+
+```{r, echo = FALSE, results = TRUE}
+drop1(mod_out, ddf="Kenward-Roger")
+
+emmeans(mod_out, "cell_line") 
+pairs( emmeans(mod_out, "cell_line") ) 
+```
+## Plot additional effect sizes for pausing
+```{r effect sizes, message = FALSE, warning = FALSE, fig.path='figures/', dev=c('png', 'svg')}
+
+# Figure setup
+# Convert cis_df$estimate and conf ints to numeric
+cis_pause_df$estimate <- as.numeric(cis_pause_df$estimate)
+cis_pause_df$Upper <- as.numeric(cis_pause_df$Upper)
+cis_pause_df$Lower <- as.numeric(cis_pause_df$Lower)
+
+# Print results to a table
+effect_tab = cbind(cis_pause_df$metric, cis_pause_df$estimate, cis_pause_df$Lower, cis_pause_df$Upper) 
+  
+knitr::kable(effect_tab, col.names = c('Metric','Estimated Effect','Lower CI','Upper CI'))
+
+
+
+# Initialize plot
+effect_plot <- ggplot(cis_pause_df, aes(x = 1, y = I(estimate))) +
+  geom_linerange(aes(ymin = I(Lower), ymax = I(Upper), size = 2)) +
+  geom_hline(yintercept = 0) +
+  facet_wrap(~metric) + 
+  
+  scale_y_continuous(labels = scales::number_format(accuracy = 0.01)) + 
+  labs(
+    y = "Estimated Effect Size",
+    title = "Figure ##",
+    subtitle = "The effect of Arpc1b KO on motility metrics"
+  ) +
+  theme_Briana() +
+  theme(legend.position = "none",
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank()
+  ) 
+
+effect_plot
+```
+
+## Make a plot to show any differences in free, confined velocity
+```{r lmer pause_duration, echo = TRUE}
+df=data.frame(x,y,pValues)
+library(ggplot2)
+ggplot(data=df) + aes(x=x, y=y, size=-log(pValues)) + geom_point(alpha=0.5, col='blue')
 ```
