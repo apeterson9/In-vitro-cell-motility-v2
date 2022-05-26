@@ -91,7 +91,7 @@ agg <- data_clean
 #third part is the J column
 agg <- aggregate( cbind(track_length,cumul_distance,net_displacement,tortuosity, mean_velocity, mean_theta, mean_CI, num_pauses, pause_duration, confinement_radius, confined_vel, free_vel, super_vel, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
 
-#agg <- cbind(agg[,1:4],agg[,5:17]/agg[,18])
+agg <- cbind(agg[,1:4],agg[,5:17]/agg[,18],agg[,18])
 
 agg$trt <- apply(agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
 agg$trt <- as.factor(agg$trt)
@@ -351,10 +351,10 @@ bee.plot
 ```
 
 ## Calculating the effect size for cell speed during periods of free motility
-The linear-mixed effects model has several useful advantages. It allows us to estimate the means of the data (given the variability), determine which if any of our fixed effects are predictive of an observed difference between test and control populations and identify with confidence how much of an effect these predictive fixed effects have on the outcome. Another way you can summarize data with significant random variabilility is to calculate the "effect size". Even though we saw significant variation in basal speed from day to day, the KO cells were consistently slower. It turns out that the difference between control and KO cells for any given day is very consistent. 
+The linear-mixed effects model has several useful advantages. It allows us to estimate the means of the data (given the variability), determine which if any of our fixed effects are predictive of an observed difference between test and control populations and identify with confidence how much of an effect these predictive fixed effects have on the outcome. Another way you can summarize data with significant random variability is to calculate the "effect size". Even though we saw significant variation in basal speed from day to day, the KO cells were consistently slower. It turns out that the difference between control and KO cells for any given day is very consistent. 
 
 To calculate the effect size, aggregated cell speed data was averaged across all stimuli per day. A data frame was created to store the effect and confidence intervals for plotting later. Given that Arpc1b reduces speed,
-The mean speed for the control cells was subracted from the mean cell speed for the KO cells resulting in a negative value. This will be more intuitive for plotting later. To obtain the estimated mean and confidence intervals for the effect size, a one-sample t-test was used. 
+The mean speed for the control cells was subtracted from the mean cell speed for the KO cells resulting in a negative value. This will be more intuitive for plotting later. To obtain the estimated mean and confidence intervals for the effect size, a one-sample t-test was used. 
 
 ```{r effect_speed, include = FALSE}
 # Load data, build data frame with effects for each metric
@@ -805,6 +805,57 @@ bee.plot
 
 ```
 
+
+```{r num_pauses_box,  echo = FALSE, fig.path='figures/', dev=c('png', 'svg')}
+
+#data <- subset(data_clean, data_clean$stimulus != "PBS") # load data organized and cleaned in previous step
+# use data_clean for this step
+# Generate figure
+bee.plot <- ggplot(agg, aes(x = cell_line, y = num_pauses)) +
+  facet_wrap(~stimulus) +
+  geom_boxplot(outlier.shape=NA, fill="#B3B3B3") + 
+  geom_beeswarm(cex=3, aes(colour=f.day)) +
+  scale_colour_brewer(palette = "PiYG") +
+  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
+               geom="errorbar", color="black", width=0.5) + 
+  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
+  theme(legend.position="none")+
+  
+  # Add labels
+  labs(
+    x = "",
+    y = "Number of pauses (norm. to track length)",
+    title = "Figure ##",
+    subtitle = "Arpc1b KO cells pause more often than control cells"
+  ) 
+bee.plot
+```
+```{r num_pauses_box,  echo = FALSE, fig.path='figures/', dev=c('png', 'svg')}
+
+#data <- subset(data_clean, data_clean$stimulus != "PBS") # load data organized and cleaned in previous step
+# use data_clean for this step
+# Generate figure
+bee.plot <- ggplot(agg, aes(x = cell_line, y = pause_duration)) +
+  facet_wrap(~stimulus) +
+  geom_boxplot(outlier.shape=NA, fill="#B3B3B3") + 
+  geom_beeswarm(cex=3, aes(colour=f.day)) +
+  scale_colour_brewer(palette = "PiYG") +
+  stat_summary(fun.y = "mean", shape = 8, size = 0.5, color = "black") +
+  stat_summary(fun.data = "mean_sdl", fun.args = list(mult=1),
+               geom="errorbar", color="black", width=0.5) + 
+  stat_compare_means(data=agg, comparisons = list(c("CTL","KO")), method="t.test", paired=FALSE) +
+  theme(legend.position="none")+
+  
+  # Add labels
+  labs(
+    x = "",
+    y = "Pause duration",
+    title = "Figure ##",
+    subtitle = "Arpc1b KO cells pause for longer than control cells"
+  ) 
+bee.plot
+```
 
 ```{r bee plot practice}
 bee.plot <- ggplot(data_clean[data_clean$stimulus== "fMLF_1uM", ], aes(x = cell_line, y = pause_duration)) +

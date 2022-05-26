@@ -114,6 +114,7 @@ rm(data_speed_sum)
 
 agg <- data_clean
 agg <- aggregate( cbind(track_length,cumul_distance,net_displacement,tortuosity, mean_velocity, mean_theta, mean_CI, num_pauses, pause_duration, confinement_radius, confined_vel, free_vel, super_vel, J) ~ f.day + slide + cell_line + stimulus, data=agg, FUN=sum)
+agg <- cbind(agg[,1:4],agg[,5:17]/agg[,18],agg[,18])
 
 agg$trt <- apply(agg[,c("stimulus","cell_line")], 1, paste, sep="", collapse=":")
 agg$trt <- as.factor(agg$trt)
